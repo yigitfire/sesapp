@@ -135,8 +135,10 @@
   /* Sesteyken kendi satırımın üstündeki şerit: bağlı olduğu oda ve sesten çık düğmesi. */
   #sesBagli{display:flex;align-items:center;gap:6px;padding:2px 0 8px 4px;margin-bottom:8px;border-bottom:1px solid var(--bg4)}
   #sesBagli .yazi{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-  #sesBagli b{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--vurgu)}
-  #sesBagli b .i{width:15px;height:15px}
+  #sesBagli b{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:var(--vurgu)}
+  /* 3 çubuklu sinyal: iyi bağlantıda 3'ü de dolu, yavaşta 2, kötüde 1 (kalanlar soluk). */
+  #sesBagli .sinyal{width:16px;height:16px;flex:none;fill:currentColor}
+  #sesBagli b.orta .sinyal rect:nth-child(3),#sesBagli b.kotu .sinyal rect:nth-child(n+2){opacity:.25}
   /* Sinyal rengi gerçek bağlantıya göre: iyi lime, yavaş sarı, kötü kırmızı. */
   #sesBagli b.orta{color:#f0b232}
   #sesBagli b.kotu{color:var(--kirmizi)}
@@ -320,7 +322,6 @@
   <symbol id="i-asagi" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
   <symbol id="i-resim" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
   <symbol id="i-sag" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
-  <symbol id="i-sinyal" viewBox="0 0 24 24"><path d="M2 20h.01"/><path d="M7 20v-4"/><path d="M12 20v-8"/><path d="M17 20V8"/><path d="M22 4v16"/></symbol>
 </svg>
 
 <div id="guncelleme"></div>
@@ -360,7 +361,7 @@
       </div>
       <div id="sesBagli">
         <div class="yazi">
-          <b><svg class="i"><use href="#i-sinyal"/></svg>Ses bağlı</b>
+          <b><svg class="sinyal" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="15" width="5.5" height="7" rx="1.5"/><rect x="9.25" y="9" width="5.5" height="13" rx="1.5"/><rect x="16.5" y="3" width="5.5" height="19" rx="1.5"/></svg>Ses bağlı</b>
           <span>Ses odası</span>
         </div>
         <button class="ib tehlike" id="cik" title="Sesten çık"><svg class="i"><use href="#i-kapat"/></svg></button>
