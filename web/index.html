@@ -43,6 +43,13 @@
      koyu olup saydamlığı yiyordu). */
   :root.saydam #sol,:root.saydam #uyeler{background:color-mix(in srgb,var(--bg2) calc(var(--opak) * .35),transparent)}
   :root.saydam #ben{background:color-mix(in srgb,var(--alt) calc(var(--opak) * .35),transparent)}
+  /* Saydamken arkadaki açık renkli şeylerin üstünde de okunsun: yazılar ve simgeler parlak kalır,
+     altlarına ince gölge (koyu temalarda; açık temada yazı zaten koyu). */
+  :root.saydam:not([data-tema=acik]){--yazi:#f2f2f2;--soluk:#c2c2c2;--bas:#fff}
+  :root.saydam:not([data-tema=acik]) body{text-shadow:0 1px 2px #000c}
+  :root.saydam:not([data-tema=acik]) .i,:root.saydam:not([data-tema=acik]) #ustCubuk svg,
+  :root.saydam:not([data-tema=acik]) #sunucuBaslik img{filter:drop-shadow(0 1px 1.5px #000c)}
+  :root.saydam:not([data-tema=acik]) input,:root.saydam:not([data-tema=acik]) .kart,:root.saydam:not([data-tema=acik]) #sagMenu{text-shadow:none}
   #saydamSeviye{display:flex;align-items:center;gap:8px;margin:2px 0 6px}
   #saydamSeviye[hidden]{display:none}
   #saydamSeviye .yuzde{width:36px}
@@ -56,6 +63,7 @@
   .sesIzgara button{position:relative;height:34px;padding:0 8px;border-radius:7px;background:var(--bg4);font-size:13px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
   .sesIzgara button:hover{background:color-mix(in srgb,var(--vurgu) 22%,var(--bg4))}
+  .sesIzgara.kurtarilan button{background:none;border:1px solid var(--bg4);color:var(--soluk)}
   .sesIzgara button.ekle{text-align:center;color:var(--soluk);border:1px dashed var(--soluk);background:none}
   .sesIzgara input.sesAdi{height:34px;padding:0 8px;font-size:13px;border-radius:7px;border-color:var(--vurgu)}
   #sesPanelMenu .seviye{margin-top:4px}
@@ -77,7 +85,7 @@
   :root.pencereli body{padding-top:var(--ust)}
   :root.pencereli #ustCubuk{display:flex;align-items:center;position:fixed;top:0;left:0;right:0;height:var(--ust);z-index:8;
     background:var(--alt);-webkit-user-select:none;user-select:none}
-  :root.saydam #ustCubuk{background:transparent}
+  :root.saydam #ustCubuk{background:color-mix(in srgb,var(--alt) calc(var(--opak) * .5 + 35%),transparent)}
   #ustCubuk .ad{flex:1;display:flex;align-items:center;gap:7px;padding-left:12px;font-size:12px;font-weight:600;color:var(--soluk);pointer-events:none}
   #ustCubuk .ad img{width:16px;height:16px}
   :root.mac #ustCubuk .ad{justify-content:center;padding-left:0}
@@ -385,9 +393,9 @@
   #buyukFoto img{width:min(256px,80vw);height:auto;aspect-ratio:1;border-radius:16px;box-shadow:0 12px 40px #0008;image-rendering:auto}
   #buyukFoto div{font-size:15px;font-weight:600;color:#fff}
   #kisiler .av.fotolu,#mesajlar .av.fotolu,#uyeler .av.fotolu{cursor:zoom-in}
-  #ayarlar{display:none;position:fixed;inset:0;z-index:5;background:#0009;align-items:center;justify-content:center}
+  #ayarlar{display:none;position:fixed;inset:var(--ust,0px) 0 0 0;z-index:5;background:#0009;align-items:center;justify-content:center}
   #ayarlar.acik{display:flex}
-  #ayarlar .kart{width:300px;max-width:calc(100vw - 32px);padding:16px;border-radius:12px;background:var(--bg2);box-shadow:0 12px 40px #0006}
+  #ayarlar .kart{width:300px;max-width:calc(100vw - 32px);max-height:calc(100% - 24px);overflow:auto;padding:16px;border-radius:12px;background:var(--bg2);box-shadow:0 12px 40px #0006}
   #ayarlar .ust{justify-content:space-between;margin-bottom:6px}
   #ayarlar h2{margin:0;font-size:16px;font-weight:600}
   #ayarlar h3{margin:16px 0 8px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--soluk)}
@@ -672,6 +680,13 @@ const profiller = oku('profiller', {})
 // Kişi başı ses ayarı, sadece bu cihazda: userId -> {v: 0-200, s: susturuldu mu}.
 // Kimliğe bağlı olduğu için kişi ismini değiştirse de ayar kalır.
 const sesler = oku('sesler', {})
+// 0.1.29-0.1.31'de panel/giriş sesi listesi yanlışlıkla bu anahtara yazılıyordu (iki ayar birbirini
+// siliyordu). Artık o liste 'seslerim'de; burada kalmışsa oraya taşınır.
+if (Array.isArray(sesler.panel) || 'giris' in sesler) {
+  if (oku('seslerim', null) == null) kaydet('seslerim', {giris: sesler.giris, girisAd: sesler.girisAd, panel: sesler.panel})
+  delete sesler.giris; delete sesler.girisAd; delete sesler.panel
+  kaydet('sesler', sesler)
+}
 let gecmis = []          // [{id, u: userId, t: metin, z: zaman}]
 let gecmisAnahtari = ''  // her odanın geçmişi ayrı saklanır
 // Odanın üyeleri ve en son ne zaman çevrimiçi göründükleri: userId -> zaman (ms).
@@ -1104,7 +1119,7 @@ async function katil(isim, oda) {
     if (await ozetAl(veri) !== o) return
     sesIsteniyor.delete(o)
     sesTamponlari.set(o, pcmTampon(veri))
-    sesVeriSakla(o, veri)
+    sesVeriSakla(o, veri, 'diger')
     sesGeldi(o)
   })
   sesIstegi.onMessage(async (v, {peerId}) => {
@@ -1242,7 +1257,10 @@ async function katil(isim, oda) {
   // hiç gitmiyordu: o kişi bizi duymuyor, biz onu duyuyorduk.
   room.onPeerJoin(({peerId, userId}) => {
     if (userId === benimId) return
-    room.addStream(gidenSes, {target: peerId}).catch(() => {})
+    room.addStream(gidenSes, {target: peerId}).catch(e => {
+      sesKaydi('akış gönderilemedi:', kimAdi(userId), peerId.slice(0, 4), e?.message || e, '-> 2 sn sonra yeniden')
+      setTimeout(() => akisYenidenGonder(peerId), 2000)
+    })
     gorundu(benimId)
     esitle.send({m: gecmis, p: profiller, s: uyeler, o: oylar}, {target: peerId}).catch(() => {})
     for (const id of [...eksikResimler].slice(-30)) resimIste(id, peerId)
@@ -1253,6 +1271,31 @@ async function katil(isim, oda) {
     seste.delete(userId)
   })
 
+  // Akış isteme: bekçi seste olan birinden ses akışı alamadığını görünce (yeniden bağlanırken
+  // akış bazen hiç ulaşmıyor) o kişiye "sesini yeniden gönder" der; o da akışı söküp yeniden
+  // takar. Eskiden bu durumda gir-çık yapmak gerekiyordu.
+  const akisIstegi = room.makeAction('akisIste')
+  const akisYenidenGonder = peerId => {
+    try { room.removeStream(gidenSes, {target: peerId}) } catch {}
+    setTimeout(() => room.addStream(gidenSes, {target: peerId})
+      .catch(e => sesKaydi('akış yeniden gönderilemedi:', peerId.slice(0, 4), e?.message || e)), 500)
+  }
+  akisIstegi.onMessage((_, {peerId, userId}) => {
+    sesKaydi('istek:', kimAdi(userId), 'sesimi alamıyor -> akışım yeniden gönderiliyor')
+    akisYenidenGonder(peerId)
+  })
+  // Aynı kişiden 8 sn, 16, 32, ... en çok 1 dakikada bir istenir.
+  function akisIste(userId, k, neden) {
+    if (Date.now() < (k.sonrakiIstek || 0)) return
+    const peerId = Object.entries(room.getPeers())
+      .filter(([, b]) => b?.userId === userId && !['failed', 'closed'].includes(b?.connection?.connectionState)).at(-1)?.[0]
+    if (!peerId) return
+    k.istekSayisi = (k.istekSayisi || 0) + 1
+    k.sonrakiIstek = Date.now() + Math.min(60e3, 8e3 * 2 ** (k.istekSayisi - 1))
+    sesKaydi('onarım:', kimAdi(userId), neden, '-> akışını yeniden göndermesi istendi', '(' + k.istekSayisi + '. deneme)')
+    akisIstegi.send({}, {target: peerId}).catch(() => {})
+  }
+
   // Her bağlantının ses akışı ayrı tutulur. Bir kişinin yeni bağlantısı gelince onun sesi
   // çalınır; çalınan bağlantı kapanırsa (kişi hâlâ odadaysa) kalan bağlantısına geçilir.
   const akislar = new Map()  // peerId -> {userId, stream}
@@ -1261,6 +1304,8 @@ async function katil(isim, oda) {
     akislar.set(peerId, {userId, stream})
     const kisa = peerId.slice(0, 4)
     sesKaydi('akış geldi:', kimAdi(userId), 'bağlantı', kisa, 'iz', stream.getAudioTracks().length)
+    const kisi = kisiler.get(userId)
+    if (kisi?.istekSayisi) { sesKaydi('düzeldi:', kimAdi(userId), 'akışı geldi'); kisi.istekSayisi = kisi.sonrakiIstek = 0 }
     for (const iz of stream.getAudioTracks()) {
       iz.addEventListener('mute', () => sesKaydi('iz sustu (veri gelmiyor):', kimAdi(userId), kisa))
       iz.addEventListener('unmute', () => sesKaydi('iz yeniden veri alıyor:', kimAdi(userId), kisa))
@@ -1313,7 +1358,14 @@ async function katil(isim, oda) {
       if (!sesteMi(userId) || userId === benimId) continue
       const ad = kimAdi(userId)
       const baglar = [...akislar.entries()].filter(([, a]) => a.userId === userId)
-      if (!baglar.length) { if (ozetYaz) ozet.push(ad + ': akış yok'); continue }
+      if (!baglar.length) {
+        // İki kontrol (6 sn) boyunca akış yoksa karşıdan istenir.
+        k.akisYokSay = (k.akisYokSay || 0) + 1
+        if (k.akisYokSay >= 2) akisIste(userId, k, 'seste ama ses akışı yok')
+        if (ozetYaz) ozet.push(ad + ': akış yok')
+        continue
+      }
+      k.akisYokSay = 0
       const canli = ([p, a]) => a.stream.getAudioTracks()[0]?.readyState === 'live'
         && !['failed', 'closed'].includes(pcler[p]?.connectionState)
       const calan = baglar.find(([, a]) => a.stream === k.audio?.srcObject)
@@ -1325,6 +1377,9 @@ async function katil(isim, oda) {
       }
       const [peerId, {stream}] = calan
       const iz = stream.getAudioTracks()[0]
+      // Bağlantı var ama ~9 sn hiç veri gelmiyor (ve geçilecek başka bağlantı yok): karşıdan istenir.
+      k.veriYokSay = iz.muted ? (k.veriYokSay || 0) + 1 : 0
+      if (k.veriYokSay >= 3 && enYeni === calan) akisIste(userId, k, 'bağlantıdan veri gelmiyor')
       // Çalan bağlantıdan veri gelmiyor ama aynı kişinin başka canlı bağlantısı varsa ona geç.
       if (iz.muted && enYeni !== calan && !enYeni[1].stream.getAudioTracks()[0]?.muted) {
         sesKaydi('onarım:', ad, 'çalan bağlantıdan veri gelmiyor -> diğer bağlantıya geçiliyor')
@@ -2326,7 +2381,7 @@ function seslerTemizle(d) {
   }
   return {giris: gecerliOzet(d?.giris) ? d.giris : '', girisAd: String(d?.girisAd || '').slice(0, 40), panel}
 }
-const benimSesler = seslerTemizle(oku('sesler', {}))
+const benimSesler = seslerTemizle(oku('seslerim', {}))
 const kisiSesleri = new Map()      // userId -> {giris, panel}
 const sesTamponlari = new Map()    // özet -> AudioBuffer
 const sesIsteniyor = new Map()     // özet -> istek zamanı (sadece istenen ses kabul edilir)
@@ -2346,12 +2401,13 @@ async function sesVeriGetir(o) {
     })
   } catch { return null }
 }
-async function sesVeriSakla(o, veri) {
+// k: kimin sesi ('ben' ya da 'diger'). Eski kayıtlarda yok (bkz. kurtarılan sesler).
+async function sesVeriSakla(o, veri, k) {
   try {
     const d = await depo()
     await new Promise((ok, hata) => {
       const tx = d.transaction('sesler', 'readwrite')
-      tx.objectStore('sesler').put({o, veri, z: Date.now()})
+      tx.objectStore('sesler').put({o, veri, k, z: Date.now()})
       tx.oncomplete = ok
       tx.onerror = () => hata(tx.error)
     })
@@ -2362,6 +2418,22 @@ async function sesVeriSakla(o, veri) {
 // kısılır. Tepeler çalma hattındaki sınırlayıcıda tutulur, cızırtı olmaz. Eski yüklenen
 // sesler de çalarken düzelir.
 const SES_HEDEF_RMS = .12
+async function sesKayitlari() {
+  try {
+    const d = await depo()
+    return await new Promise((ok, hata) => {
+      const r = d.transaction('sesler').objectStore('sesler').getAll()
+      r.onsuccess = () => ok(r.result || [])
+      r.onerror = () => hata(r.error)
+    })
+  } catch { return [] }
+}
+async function sesKaydiSil(o) {
+  try {
+    const d = await depo()
+    d.transaction('sesler', 'readwrite').objectStore('sesler').delete(o)
+  } catch {}
+}
 function pcmTampon(veri) {
   const pcm = new Int16Array(veri)
   const t = new AudioBuffer({length: Math.max(1, pcm.length), numberOfChannels: 1, sampleRate: SES_HZ})
@@ -2477,7 +2549,7 @@ async function panelSesiCal(o, kimden) {
   sesVerisiAl(o, kimden)
 }
 function seslerimiYay() {
-  kaydet('sesler', benimSesler)
+  kaydet('seslerim', benimSesler)
   sesListesi?.set(benimSesler).catch(() => {})
 }
 const dosyaAdi = d => String(d.name || 'Ses').replace(/\.[^.]+$/, '').trim().slice(0, 24) || 'Ses'
@@ -2509,6 +2581,8 @@ function sesPaneliniCiz() {
           ['Yeniden adlandır', () => sesAdlandir(b, x)],
           ['Sil', () => {
             benimSesler.panel = benimSesler.panel.filter(y => y.o !== x.o)
+            if (benimSesler.giris !== x.o && ![...kisiSesleri.values()].some(l => l.panel.some(y => y.o === x.o)))
+              sesKaydiSil(x.o)
             seslerimiYay()
             sesPaneliniCiz()
           }],
@@ -2527,6 +2601,49 @@ function sesPaneliniCiz() {
   }
   bolum('Seslerin', benimSesler.panel, true)
   for (const [id, l] of kisiSesleri) if (l.panel.length && kisiler.has(id)) bolum(isimAl(id) + ' sesleri', l.panel, false)
+  kurtarilanlariCiz(liste)
+}
+// Kurtarılan sesler: 0.1.31'e kadar ses listesi başka bir ayarla çakışıp silinebiliyordu; sesin
+// kendisi bu bilgisayarda kaldı. Sahibi bilinmeyen (eski kayıt), kimsenin listesinde olmayan
+// sesler burada çıkar: tıkla dinle (sadece sen), sağ tıkla panele ekle / giriş sesi yap / sil.
+let kurtarmaNo = 0
+async function kurtarilanlariCiz(liste) {
+  const no = ++kurtarmaNo
+  const bilinen = new Set([benimSesler.giris, ...benimSesler.panel.map(x => x.o)])
+  for (const l of kisiSesleri.values()) { bilinen.add(l.giris); for (const x of l.panel) bilinen.add(x.o) }
+  const eskiler = (await sesKayitlari()).filter(x => !x.k && !bilinen.has(x.o) && x.veri?.byteLength)
+    .sort((a, b) => a.z - b.z)
+  if (no !== kurtarmaNo || !eskiler.length || !liste.isConnected) return
+  const h = document.createElement('h5')
+  h.textContent = 'Kurtarılan sesler — tıkla dinle, sağ tıkla ekle'
+  const izgara = document.createElement('div')
+  izgara.className = 'sesIzgara kurtarilan'
+  eskiler.forEach((x, i) => {
+    const sn = (x.veri.byteLength / 2 / SES_HZ).toFixed(1).replace('.', ',')
+    const ad = 'Eski ses ' + (i + 1)
+    const b = document.createElement('button')
+    b.textContent = `${ad} · ${sn} sn`
+    b.onclick = async () => tamponCal(await sesTamponu(x.o))
+    const sahiplen = () => sesVeriSakla(x.o, x.veri, 'ben')
+    b.oncontextmenu = e => {
+      e.preventDefault()
+      e.stopPropagation()
+      const secenek = [['Giriş sesim yap', async () => {
+        await sahiplen()
+        benimSesler.giris = x.o
+        benimSesler.girisAd = ad
+        seslerimiYay(); girisSesiArayuzu(); sesPaneliniCiz()
+      }], ['Sil', async () => { await sesKaydiSil(x.o); sesPaneliniCiz() }]]
+      if (benimSesler.panel.length < PANEL_MAX) secenek.unshift(['Panelime ekle', async () => {
+        await sahiplen()
+        benimSesler.panel.push({o: x.o, a: ad})
+        seslerimiYay(); sesPaneliniCiz()
+      }])
+      sagMenuAc(e.clientX, e.clientY, secenek)
+    }
+    izgara.append(b)
+  })
+  liste.append(h, izgara)
 }
 // Sesin adı düğmenin yerinde yazılarak değişir (Enter/başka yere tıklama: kaydet, Esc: vazgeç).
 function sesAdlandir(b, x) {
@@ -2564,7 +2681,7 @@ $('panelDosya').onchange = async () => {
   try {
     const veri = await sesHazirla(d, PANEL_SN)
     const o = await ozetAl(veri)
-    await sesVeriSakla(o, veri)
+    await sesVeriSakla(o, veri, 'ben')
     sesTamponlari.set(o, pcmTampon(veri))
     if (!benimSesler.panel.some(x => x.o === o)) benimSesler.panel.push({o, a: dosyaAdi(d)})
     benimSesler.panel = benimSesler.panel.slice(0, PANEL_MAX)
@@ -2610,7 +2727,7 @@ $('girisSesiDosya').onchange = async () => {
   try {
     const veri = await sesHazirla(d, GIRIS_SN)
     const o = await ozetAl(veri)
-    await sesVeriSakla(o, veri)
+    await sesVeriSakla(o, veri, 'ben')
     sesTamponlari.set(o, pcmTampon(veri))
     benimSesler.giris = o
     benimSesler.girisAd = dosyaAdi(d)
