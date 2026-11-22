@@ -12,7 +12,10 @@
     unicode-range:U+011E-011F,U+0130,U+015E-015F}
 
   :root{--bg:#111214;--bg2:#17181a;--bg3:#1f2023;--bg4:#2a2b2f;--alt:#131416;
-        --yazi:#dcdde0;--soluk:#7d8088;--yesil:#3ccf6e;--kirmizi:#ed5555;color-scheme:dark}
+        --yazi:#dcdde0;--soluk:#7d8088;--yesil:#3ccf6e;--kirmizi:#ed5555;--bas:#fff;color-scheme:dark}
+  /* Açık tema (Ayarlar'dan). Sadece renk değişkenleri değişir. */
+  :root[data-tema=acik]{--bg:#f6f7f8;--bg2:#eceef1;--bg3:#e1e4e8;--bg4:#d0d4da;--alt:#e5e8ec;
+        --yazi:#1c1e22;--soluk:#6a6f78;--yesil:#22a052;--kirmizi:#d93b3b;--bas:#1c1e22;color-scheme:light}
   *{box-sizing:border-box}
   body{margin:0;height:100vh;display:flex;background:var(--bg);color:var(--yazi);
        font:15px/1.4 'Noto Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
@@ -37,7 +40,7 @@
   .satir{display:flex;gap:8px}
   .satir input{flex:1}
   #katil{width:42px;border-radius:8px;display:grid;place-items:center;background:var(--yazi);color:var(--bg)}
-  #katil:hover{background:#fff}
+  #katil:hover{filter:brightness(1.15)}
   #katil:disabled{opacity:.4;cursor:default}
   #hata{min-height:20px;font-size:13px;text-align:center;color:var(--soluk)}
   #hata.hata{color:var(--kirmizi)}
@@ -63,11 +66,25 @@
   .kisi:hover .sus,.susturuldu .sus{opacity:1}
   .susturuldu .ad{opacity:.5}
   .susturuldu .sus{color:var(--kirmizi)}
+  /* Sadece sohbette olan (seste olmayan) kişi: soluk, listenin altında, ses ayarı gizli. */
+  .kisi.yazida{order:1;opacity:.45}
+  .kisi.yazida .sus,.kisi.yazida:hover .ses{display:none}
+
+  /* Seste değilken: mikrofon/çık/seviye gizlenir, "Sese katıl" görünür. */
+  #sesAlani{display:none;padding:8px}
+  .sessiz #sesAlani{display:block}
+  .sessiz #mute,.sessiz #cik,.sessiz #ben .bar,.sessiz #ben .ses{display:none}
+  #seseKatil{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;border-radius:8px;
+             background:var(--yesil);color:#0b1a10;font-weight:600}
+  #seseKatil:hover{filter:brightness(1.1)}
+  #seseKatil:disabled{opacity:.5;cursor:default}
+  #mikHata{margin-top:6px;font-size:12px;text-align:center;color:var(--kirmizi)}
+  #mikHata:empty{display:none}
 
   input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:4px;padding:0;border:0;border-radius:2px;cursor:pointer;
     background:linear-gradient(var(--yazi),var(--yazi)) 0/var(--p,50%) 100% no-repeat,var(--bg4)}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#fff}
-  input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radius:50%;background:#fff}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--bas)}
+  input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radius:50%;background:var(--bas)}
   input[type=range]::-moz-range-track{background:transparent}
 
   #ben{position:relative;padding:8px;background:var(--alt)}
@@ -80,7 +97,9 @@
            background:var(--bg3);box-shadow:0 8px 24px #0008;grid-template-columns:repeat(6,1fr);gap:10px}
   #renkler.acik{display:grid}
   #renkler button{aspect-ratio:1;border-radius:50%;outline:2px solid transparent;outline-offset:2px}
-  #renkler button.secili{outline-color:#fff}
+  #renkler button.secili{outline-color:var(--yazi)}
+  #ben .ust{gap:6px}
+  #ben .ib{width:30px}
 
   /* Sağ: sohbet */
   #sag{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -94,12 +113,36 @@
   #yaz{display:flex;align-items:center;margin:0 16px 16px;padding-right:4px;border-radius:10px;background:var(--bg3)}
   #yaz input{flex:1;padding:12px 14px;background:transparent;border:0}
   #sesUyari{display:none;margin:12px 16px 0;padding:8px 12px;border-radius:8px;background:#2a2410;color:#f5d047;font-size:13px;cursor:pointer}
+  :root[data-tema=acik] #sesUyari{background:#fbefc6;color:#6e5300}
   #guncelleme{display:none;position:fixed;top:0;left:0;right:0;z-index:9;padding:6px;text-align:center;font-size:13px;background:var(--bg4)}
+
+  /* Ayarlar penceresi */
+  #ayarlar{display:none;position:fixed;inset:0;z-index:5;background:#0009;align-items:center;justify-content:center}
+  #ayarlar.acik{display:flex}
+  #ayarlar .kart{width:300px;max-width:calc(100vw - 32px);padding:16px;border-radius:12px;background:var(--bg2);box-shadow:0 12px 40px #0006}
+  #ayarlar .ust{justify-content:space-between;margin-bottom:6px}
+  #ayarlar h2{margin:0;font-size:16px;font-weight:600}
+  #ayarlar h3{margin:16px 0 8px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--soluk)}
+  .bolmeli{display:flex;padding:3px;border-radius:8px;background:var(--bg3)}
+  .bolmeli button{flex:1;padding:6px;border-radius:6px;font-size:14px;color:var(--soluk)}
+  .bolmeli button.secili{background:var(--bg)!important;color:var(--yazi)}
+  .anahtar{display:flex;align-items:center;justify-content:space-between;padding:7px 0;font-size:14px;cursor:pointer}
+  .anahtar input{-webkit-appearance:none;appearance:none;width:34px;height:20px;padding:0;margin:0;border:0;border-radius:10px;
+                 background:var(--bg4);position:relative;cursor:pointer;transition:background .15s}
+  .anahtar input::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s}
+  .anahtar input:checked{background:var(--yesil)}
+  .anahtar input:checked::after{transform:translateX(14px)}
+  #odadanCik{width:100%;margin-top:18px;padding:9px;border-radius:8px;font-size:14px;color:var(--kirmizi);background:var(--bg3)}
+  #odadanCik:hover{background:var(--bg4)}
 
   ::-webkit-scrollbar{width:8px}
   ::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px}
   ::-webkit-scrollbar-track{background:transparent}
 </style>
+<script>
+  // Tema, sayfa çizilmeden önce uygulanır; yoksa açık temada bir an koyu ekran yanıp söner.
+  try { if (localStorage.getItem('tema') === 'acik') document.documentElement.dataset.tema = 'acik' } catch {}
+</script>
 </head>
 <body>
 <!-- Simge çizimleri: Lucide (ISC lisansı, lucide.dev) -->
@@ -112,6 +155,10 @@
   <symbol id="i-hop-yok" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></symbol>
   <symbol id="i-gonder" viewBox="0 0 24 24"><path d="M14.5 21.7a.5.5 0 0 0 .9 0l6.5-19a.5.5 0 0 0-.6-.6l-19 6.5a.5.5 0 0 0 0 .9l7.9 3.2a2 2 0 0 1 1.1 1.1z"/><path d="m21.9 2.1-11 11"/></symbol>
   <symbol id="i-cik" viewBox="0 0 24 24"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></symbol>
+  <symbol id="i-ayar" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-kulaklik" viewBox="0 0 24 24"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></symbol>
+  <symbol id="i-kapat" viewBox="0 0 24 24"><path d="M10.1 13.9a14 14 0 0 0 3.7 2.7 1 1 0 0 0 1.2-.3l.4-.5A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.5.4a1 1 0 0 0-.3 1.2 14 14 0 0 0 .2.5"/><path d="M22 2 2 22"/></symbol>
 </svg>
 
 <div id="guncelleme"></div>
@@ -129,13 +176,18 @@
 <div id="app">
   <div id="sol">
     <div id="kisiler"></div>
+    <div id="sesAlani">
+      <button id="seseKatil"><svg class="i"><use href="#i-kulaklik"/></svg>Sese katıl</button>
+      <div id="mikHata"></div>
+    </div>
     <div id="ben">
       <div id="renkler"></div>
       <div class="ust">
         <button class="av" id="benAv" title="Rengini seç"></button>
         <input id="benIsim" maxlength="24" title="İsmini değiştir">
         <button class="ib" id="mute" title="Mikrofonu kapat"><svg class="i"><use href="#i-mik"/></svg></button>
-        <button class="ib tehlike" id="cik" title="Çık"><svg class="i"><use href="#i-cik"/></svg></button>
+        <button class="ib tehlike" id="cik" title="Sesten çık"><svg class="i"><use href="#i-kapat"/></svg></button>
+        <button class="ib" id="ayarAc" title="Ayarlar"><svg class="i"><use href="#i-ayar"/></svg></button>
       </div>
       <div class="bar"><i id="micBar"></i></div>
       <div class="ses" title="Mikrofon seviyesi">
@@ -150,6 +202,19 @@
       <input id="mesaj" placeholder="Mesaj yaz">
       <button class="ib" id="gonder" title="Gönder"><svg class="i"><use href="#i-gonder"/></svg></button>
     </div>
+  </div>
+</div>
+
+<div id="ayarlar">
+  <div class="kart">
+    <div class="ust"><h2>Ayarlar</h2><button class="ib k" id="ayarKapat" title="Kapat"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <h3>Tema</h3>
+    <div class="bolmeli" id="temaSec"><button data-tema="koyu">Koyu</button><button data-tema="acik">Açık</button></div>
+    <h3>Bildirim sesleri</h3>
+    <label class="anahtar">Biri sese girince<input type="checkbox" data-bildirim="giris"></label>
+    <label class="anahtar">Biri sesten çıkınca<input type="checkbox" data-bildirim="cikis"></label>
+    <label class="anahtar">Yeni mesaj gelince<input type="checkbox" data-bildirim="mesaj"></label>
+    <button id="odadanCik">Odadan çık</button>
   </div>
 </div>
 
@@ -181,6 +246,13 @@ let gecmisAnahtari = ''  // her odanın geçmişi ayrı saklanır
 
 let ctx, room, profil, benimId = ''
 const kisiler = new Map()
+// Ses kanalı. Odaya girmek = sohbet; sese girmek ayrı. Seste değilken mikrofon tamamen
+// kapalı (Mac'teki turuncu mikrofon ışığı da söner) ve kimse duyulmaz.
+let sesteyim = false, sesDurumu, micGain, micKaynak, dinleme
+// Kim seste: userId -> true/false. Hiç bilgi gelmediyse (eski sürüm) seste sayılır,
+// çünkü eski sürümler her zaman sestedir.
+const seste = new Map()
+const sesteMi = id => seste.get(id) !== false
 
 const gecerliRenk = r => RENKLER.includes(r) ? r : null
 // İlk renk kimlikten türetilir: herkes baştan farklı (büyük ihtimalle) bir renkle başlar.
@@ -198,6 +270,62 @@ const simge = (el, ad) => el.innerHTML = `<svg class="i"><use href="#i-${ad}"/><
 // Kaydırıcının dolu kısmını boyar (CSS --p değişkeni).
 const boya = r => r.style.setProperty('--p', r.value / r.max * 100 + '%')
 const durum = (metin, hata = true) => { $('hata').textContent = metin; $('hata').classList.toggle('hata', hata) }
+
+// ---- Ayarlar: tema + bildirim sesleri (bu cihazda saklanır) ----
+const bildirim = {giris: true, cikis: true, mesaj: true, ...oku('bildirim', {})}
+function temaUygula(t) {
+  if (t === 'acik') document.documentElement.dataset.tema = 'acik'
+  else delete document.documentElement.dataset.tema
+  for (const b of $('temaSec').children) b.classList.toggle('secili', b.dataset.tema === t)
+}
+temaUygula(localStorage.getItem('tema') === 'acik' ? 'acik' : 'koyu')
+$('temaSec').onclick = e => {
+  const t = e.target.dataset?.tema
+  if (!t) return
+  try { localStorage.setItem('tema', t) } catch {}
+  temaUygula(t)
+}
+for (const k of document.querySelectorAll('[data-bildirim]')) {
+  k.checked = bildirim[k.dataset.bildirim]
+  k.onchange = () => {
+    bildirim[k.dataset.bildirim] = k.checked
+    kaydet('bildirim', bildirim)
+    // Açınca bir kere çal: kişi sesin nasıl olduğunu duysun.
+    if (k.checked) cal(k.dataset.bildirim)
+  }
+}
+const ayarKapat = () => $('ayarlar').classList.remove('acik')
+$('ayarAc').onclick = () => $('ayarlar').classList.add('acik')
+$('ayarKapat').onclick = ayarKapat
+$('ayarlar').onclick = e => { if (e.target === $('ayarlar')) ayarKapat() }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') ayarKapat() })
+$('odadanCik').onclick = () => odadanCik()
+
+// Bildirim sesleri: dosya yok, kısa tonlar burada üretilir (iki nota: giriş yükselen,
+// çıkış alçalan, mesaj kısa ve tiz). Sadece hoparlöre çalar; mikrofona ve oyun sesine dokunmaz.
+const TONLAR = {
+  giris: {notalar: [[587, 0], [880, .09]], sure: .16},
+  cikis: {notalar: [[880, 0], [587, .09]], sure: .16},
+  mesaj: {notalar: [[1175, 0], [1568, .06]], sure: .09},
+}
+function cal(tur) {
+  if (!ctx || !bildirim[tur]) return
+  const {notalar, sure} = TONLAR[tur]
+  for (const [hz, gecikme] of notalar) {
+    const t = ctx.currentTime + .01 + gecikme
+    const o = ctx.createOscillator(), g = ctx.createGain()
+    o.frequency.value = hz
+    g.gain.setValueAtTime(0, t)
+    g.gain.linearRampToValueAtTime(.12, t + .01)
+    g.gain.exponentialRampToValueAtTime(.0001, t + sure)
+    o.connect(g).connect(ctx.destination)
+    o.start(t)
+    o.stop(t + sure + .02)
+  }
+}
+// Odaya ilk girerken zaten seste olanlar için "girdi" sesi çalmasın diye ilk birkaç saniye susulur.
+let odaGirisi = 0
+const bildirimZamani = () => Date.now() - odaGirisi > 4000
 
 $('isim').value = localStorage.getItem('isim') || ''
 $('oda').value = localStorage.getItem('oda') || ''
@@ -238,23 +366,19 @@ async function katil(isim, oda) {
     : {latencyHint: 'interactive'})
   sesKilidiniAc(ctx)
 
-  let micKaynak
-  try {
-    micKaynak = masaustu ? await masaustuMikrofon(ctx) : await tarayiciMikrofon(ctx)
-  } catch (e) {
-    durum(masaustu ? 'Mikrofon açılamadı: ' + e : 'Mikrofon izni verilmedi')
-    $('katil').disabled = false
-    ctx.close()
-    return
-  }
-
-  const micGain = ctx.createGain()
+  // Ses zinciri bir kez kurulur. Giden akış hep bağlı kalır; mikrofon sese girince
+  // bu zincire takılır, çıkınca sökülür (akış o sırada sessizlik taşır, neredeyse 0 veri).
+  // Böylece sese girip çıkarken bağlantıların yeniden kurulması gerekmez.
+  micGain = ctx.createGain()
   const micAnaliz = ctx.createAnalyser()
   const cikis = ctx.createMediaStreamDestination()
-  micKaynak.connect(micGain)
   micGain.connect(micAnaliz)
   micGain.connect(cikis)
   const gidenSes = cikis.stream
+  // Herkesin sesi bu ana düğümden hoparlöre gider; seste değilken kısılır (0).
+  dinleme = ctx.createGain()
+  dinleme.gain.value = 0
+  dinleme.connect(ctx.destination)
 
   let kapali = false
   boya($('micGain'))
@@ -277,6 +401,7 @@ async function katil(isim, oda) {
   })
 
   room = joinRoom({appId: 'yigit-ses-app-2026', password: oda, maxUsers: 6}, oda)
+  odaGirisi = Date.now()
 
   room.onError(err => {
     if (err.code === 'room-full') durum('Oda dolu (max 6 kişi)')
@@ -302,6 +427,22 @@ async function katil(isim, oda) {
     kisiEkle(userId)
   })
 
+  // Kim seste: herkes kendi durumunu (imzalı) yayar, sonradan girenlere de iletilir.
+  sesDurumu = room.makeUserState('ses', {var: true})
+  sesDurumu.onChange((data, {userId, self, removed}) => {
+    if (self || removed) return
+    const once = seste.get(userId), simdi = data?.var !== false
+    seste.set(userId, simdi)
+    if (bildirimZamani() && simdi !== once) {
+      if (simdi) cal('giris')
+      else if (once === true) cal('cikis')
+    }
+    kisiEkle(userId)
+    kisiGuncelle(userId)
+  })
+  // Mikrofon açılana kadar "seste değil" görün (açılmazsa da öyle kalır).
+  sesDurumu.set({var: false}).catch(() => {})
+
   await room.addStream(gidenSes)
 
   // Sohbet. Gönderenin kimliği mesajın içinden değil, Trystero'nun doğruladığı
@@ -311,7 +452,7 @@ async function katil(isim, oda) {
     // Eski sürüm düz metin yollar; onu da kabul et.
     if (typeof m === 'string') m = {id: crypto.randomUUID(), t: m, z: Date.now()}
     const mesaj = {id: m?.id, u: userId, t: String(m?.t ?? '').slice(0, 2000), z: Number(m?.z)}
-    if (gecerliMesaj(mesaj)) mesajEkle([mesaj])
+    if (gecerliMesaj(mesaj) && mesajEkle([mesaj])) cal('mesaj')
   })
 
   // Geçmiş eşitleme: biri girince iki taraf da elindeki geçmişi ve bildiği profilleri
@@ -334,7 +475,11 @@ async function katil(isim, oda) {
     room.addStream(gidenSes, {target: userId})
     esitle.send({m: gecmis, p: profiller}, {target: userId}).catch(() => {})
   })
-  room.onUserLeave(({userId}) => kisiSil(userId))
+  room.onUserLeave(({userId}) => {
+    if (seste.get(userId) === true) cal('cikis')
+    kisiSil(userId)
+    seste.delete(userId)
+  })
 
   room.onPeerStream((stream, {userId}) => sesBagla(userId, stream))
 
@@ -379,17 +524,65 @@ async function katil(isim, oda) {
   })
   benimKartimiCiz()
 
-  $('cik').onclick = async () => {
-    // Bu oturumda otomatik girişi kapat; yoksa yenilenen sayfa hemen geri girerdi.
-    sessionStorage.setItem('cikti', '1')
-    room.leave()
-    // Sayfa yenilense de Rust tarafındaki mikrofon açık kalırdı; önce kapat.
-    if (masaustu) await window.__TAURI__.core.invoke('mikrofon_kapat')
-    location.reload()
-  }
+  $('cik').onclick = sesiKapat
+  $('seseKatil').onclick = sesiAc
 
   $('giris').style.display = 'none'
   $('app').style.display = 'flex'
+  sesArayuzu()
+  // Uygulama açılınca eskisi gibi doğrudan sese girilir.
+  sesiAc()
+}
+
+// Sese gir: mikrofonu aç, zincire tak, herkesi duymaya başla.
+async function sesiAc() {
+  if (sesteyim || $('seseKatil').disabled) return
+  $('seseKatil').disabled = true
+  $('mikHata').textContent = ''
+  try {
+    micKaynak = masaustu ? await masaustuMikrofon(ctx) : await tarayiciMikrofon(ctx)
+  } catch (e) {
+    // Mikrofon açılmasa da sohbet çalışmaya devam eder; buton tekrar denemeye izin verir.
+    $('mikHata').textContent = masaustu ? 'Mikrofon açılamadı: ' + e : 'Mikrofon izni verilmedi'
+    return
+  } finally {
+    $('seseKatil').disabled = false
+  }
+  micKaynak.connect(micGain)
+  sesteyim = true
+  dinleme.gain.value = 1
+  sesDurumu.set({var: true}).catch(() => {})
+  sesArayuzu()
+  cal('giris')
+}
+
+// Sesten çık: mikrofonu tamamen kapat, kimseyi duyma. Sohbet açık kalır.
+function sesiKapat() {
+  if (!sesteyim) return
+  sesteyim = false
+  micKaynak.disconnect()
+  if (masaustu) window.__TAURI__.core.invoke('mikrofon_kapat')
+  else micKaynak.mediaStream.getTracks().forEach(t => t.stop())
+  micKaynak = null
+  dinleme.gain.value = 0
+  sesDurumu.set({var: false}).catch(() => {})
+  sesArayuzu()
+  cal('cikis')
+}
+
+function sesArayuzu() {
+  $('app').classList.toggle('sessiz', !sesteyim)
+  if (!sesteyim) { $('ben').classList.remove('konusuyor'); $('micBar').style.width = 0 }
+}
+
+// Odadan tamamen çık (oda/isim değiştirmek için giriş ekranına döner). Ayarlar'daki buton.
+async function odadanCik() {
+  // Bu oturumda otomatik girişi kapat; yoksa yenilenen sayfa hemen geri girerdi.
+  sessionStorage.setItem('cikti', '1')
+  room.leave()
+  // Sayfa yenilense de Rust tarafındaki mikrofon açık kalırdı; önce kapat.
+  if (masaustu) await window.__TAURI__.core.invoke('mikrofon_kapat')
+  location.reload()
 }
 
 function benimProfilimiYay(degisen) {
@@ -426,14 +619,16 @@ function gecerliMesaj(m) {
 }
 
 // Yeni mesajları id'ye göre birleştirir, zamana göre sıralar, son 1000'i saklar.
+// Kaç yeni mesaj eklendiğini döndürür (aynı mesaj iki kez gelirse 0).
 function mesajEkle(liste) {
   const varOlan = new Set(gecmis.map(m => m.id))
   const yeniler = []
   for (const m of liste) if (!varOlan.has(m.id)) { varOlan.add(m.id); yeniler.push(m) }
-  if (!yeniler.length) return
+  if (!yeniler.length) return 0
   gecmis = gecmis.concat(yeniler).sort((a, b) => a.z - b.z).slice(-GECMIS_MAX)
   kaydet(gecmisAnahtari, gecmis)
   mesajlariCiz()
+  return yeniler.length
 }
 
 // Tarayıcıda (web linki): mikrofon tarayıcının kendi ses işlemesiyle açılır.
@@ -448,16 +643,20 @@ async function tarayiciMikrofon(ctx) {
 // Masaüstünde: mikrofonu Rust açar (cpal + RNNoise), 10 ms'lik paketleri Channel ile
 // yollar; worklet bunları Web Audio akışına çevirir. Tarayıcı motoru mikrofona hiç
 // dokunmadığı için Windows/Mac "görüşme modu"na geçmez, oyun sesi kısılmaz.
+// Worklet düğümü bir kez kurulur; her sese girişte sadece yeni bir kanal açılır.
+let mikDugumu
 async function masaustuMikrofon(ctx) {
-  await ctx.audioWorklet.addModule('mikrofon-worklet.js')
-  const dugum = new AudioWorkletNode(ctx, 'masaustu-mikrofon', {
-    numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1]
-  })
+  if (!mikDugumu) {
+    await ctx.audioWorklet.addModule('mikrofon-worklet.js')
+    mikDugumu = new AudioWorkletNode(ctx, 'masaustu-mikrofon', {
+      numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1]
+    })
+  }
   const {invoke, Channel} = window.__TAURI__.core
   const kanal = new Channel()
-  kanal.onmessage = paket => dugum.port.postMessage(paket, [paket])
+  kanal.onmessage = paket => mikDugumu.port.postMessage(paket, [paket])
   await invoke('mikrofon_ac', {kanal})
-  return dugum
+  return mikDugumu
 }
 
 function kisiEkle(userId) {
@@ -469,7 +668,7 @@ function kisiEkle(userId) {
     <div class="ses"><input type="range" min="0" max="200"><span class="yuzde"></span></div>`
   $('kisiler').appendChild(el)
   const gain = ctx.createGain()
-  gain.connect(ctx.destination)
+  gain.connect(dinleme)
   const kaydirici = el.querySelector('input'), sus = el.querySelector('.sus')
 
   // Kayıtlı ayar varsa onunla başla. Sustur kaydırıcıyı değiştirmez; açınca eski seviyeye döner.
@@ -497,7 +696,10 @@ function kisiEkle(userId) {
 // Kişi kartındaki isim, baş harf ve rengi profile göre yeniler.
 function kisiGuncelle(userId) {
   const k = kisiler.get(userId)
-  if (!k || !profiller[userId]) return
+  if (!k) return
+  k.el.classList.toggle('yazida', !sesteMi(userId))
+  k.el.title = sesteMi(userId) ? '' : 'Seste değil, sadece sohbette'
+  if (!profiller[userId]) return
   k.el.querySelector('.ad').textContent = isimAl(userId)
   const av = k.el.querySelector('.av')
   av.textContent = basHarf(userId)
