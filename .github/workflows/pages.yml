@@ -18,16 +18,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  yayinla:
+  # İki ayrı iş: "yayinla" ancak "hazirla" tamamen bitince başlar. Tek işteyken
+  # yayınlama adımı az önce yüklenen dosyayı bazen bulamıyordu ("No artifacts named github-pages").
+  hazirla:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.dagit.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
           path: web
+
+  yayinla:
+    needs: hazirla
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.dagit.outputs.page_url }}
+    steps:
       - id: dagit
         uses: actions/deploy-pages@v5
