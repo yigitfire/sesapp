@@ -207,6 +207,33 @@
     border:1.5px dashed var(--bg4);background:none;color:var(--soluk);font-size:12px;font-weight:600}
   #gifIzgara button.favoriEkle b{font-size:26px;line-height:1;font-weight:400}
   #gifIzgara button.favoriEkle:hover{color:var(--vurgu);border-color:var(--vurgu);outline:none}
+  /* Anket açma paneli (yazı kutusunun üstünde). */
+  #anketPanel{display:none;position:absolute;right:16px;bottom:72px;z-index:3;width:min(360px,calc(100% - 32px));
+    flex-direction:column;gap:8px;padding:14px;border-radius:12px;background:var(--bg2);box-shadow:0 12px 32px #0007}
+  #anketPanel.acik{display:flex}
+  #anketSecenekler{display:flex;flex-direction:column;gap:6px}
+  #anketSecenekEkle{align-self:flex-start;padding:4px 2px;font-size:13px;font-weight:600;color:var(--soluk);background:none}
+  #anketSecenekEkle:hover{color:var(--vurgu)}
+  #anketPanel .alt{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px;font-size:13px;color:var(--soluk)}
+  #anketPanel select{font:inherit;color:var(--yazi);background:var(--bg3);border:0;border-radius:8px;padding:7px 8px;margin-left:4px}
+  #anketGonder{padding:8px 18px;border-radius:8px;background:var(--lime);color:#111111;font-weight:700}
+  #anketHata{font-size:12px;color:var(--kirmizi)}
+  #anketHata:empty{display:none}
+  /* Sohbetteki anket kartı: seçeneğe tıklayınca oy verilir, çubuk oy oranını gösterir. */
+  .anket{max-width:380px;margin:6px 0 2px;padding:12px 12px 10px;border-radius:10px;background:var(--bg2);border:1px solid var(--bg4)}
+  .anket .soru{font-weight:700;color:var(--bas)}
+  .anket .bilgi{font-size:12px;color:var(--soluk);margin:1px 0 4px}
+  .anket .secenek{position:relative;display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;margin-top:6px;
+    padding:8px 10px;border-radius:7px;background:var(--bg3);color:var(--yazi);font-size:14px;text-align:left;overflow:hidden;
+    border:1.5px solid transparent}
+  .anket .secenek i{position:absolute;left:0;top:0;bottom:0;background:color-mix(in srgb,var(--vurgu) 24%,transparent);pointer-events:none;transition:width .3s}
+  .anket .secenek span{position:relative;min-width:0;overflow-wrap:anywhere}
+  .anket .secenek .oran{flex:none;font-size:12px;font-weight:600;color:var(--soluk)}
+  .anket .secenek:not(:disabled):hover{border-color:var(--bg4)}
+  .anket .secenek.benim{border-color:var(--vurgu)}
+  .anket .secenek:disabled{cursor:default}
+  .anket.bitti .secenek.kazanan .oran,.anket.bitti .secenek.kazanan span{color:var(--vurgu);font-weight:700}
+
   /* Sağ tık menüsü (favorilere ekle/çıkar). */
   #sagMenu{display:none;position:fixed;z-index:30;min-width:180px;padding:5px;border-radius:8px;background:var(--bg2);
     border:1px solid var(--bg4);box-shadow:0 8px 24px #0008}
@@ -340,6 +367,7 @@
   <symbol id="i-kulaklik" viewBox="0 0 24 24"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></symbol>
   <symbol id="i-kulaklik-yok" viewBox="0 0 24 24"><path d="M21 14h-1.3"/><path d="M9.1 3.5A9 9 0 0 1 21 12v3.3"/><path d="m2 2 20 20"/><path d="M20.4 20.4A2 2 0 0 1 19 21h-1a2 2 0 0 1-2-2v-3"/><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 2.6-6.4"/></symbol>
   <symbol id="i-asagi" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-anket" viewBox="0 0 24 24"><path d="M5 20V11M12 20V4M19 20v-6"/></symbol>
   <symbol id="i-resim" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
   <symbol id="i-sag" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
 </svg>
@@ -415,11 +443,27 @@
       <button class="ib" id="resimAc" title="Fotoğraf gönder"><svg class="i"><use href="#i-resim"/></svg></button>
       <input type="file" id="resimDosya" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
       <input id="mesaj" placeholder="Mesaj yaz">
+      <button class="ib" id="anketAc" title="Anket aç"><svg class="i"><use href="#i-anket"/></svg></button>
       <button class="ib" id="emojiAc" title="Emoji"><svg class="i"><use href="#i-emoji"/></svg></button>
       <button class="ib" id="gifAc" title="GIF"><svg class="i"><use href="#i-gif"/></svg></button>
       <button class="ib" id="gonder" title="Gönder"><svg class="i"><use href="#i-gonder"/></svg></button>
     </div>
     <div id="emojiPanel"><div id="emojiIzgara"></div></div>
+    <div id="anketPanel">
+      <b>Anket aç</b>
+      <input id="anketSoru" placeholder="Soru" maxlength="200">
+      <div id="anketSecenekler"></div>
+      <button id="anketSecenekEkle">+ Seçenek ekle</button>
+      <div class="alt">
+        <label>Süre <select id="anketSure">
+          <option value="300000">5 dakika</option><option value="900000">15 dakika</option>
+          <option value="1800000">30 dakika</option><option value="3600000" selected>1 saat</option>
+          <option value="21600000">6 saat</option><option value="86400000">1 gün</option>
+        </select></label>
+        <button id="anketGonder">Gönder</button>
+      </div>
+      <div id="anketHata"></div>
+    </div>
     <div id="gifPanel">
       <input id="gifAra" placeholder="Search KLIPY" maxlength="50">
       <div id="gifIzgara"><div id="gifDurum"></div></div>
@@ -851,6 +895,8 @@ async function katil(isim, oda) {
   gecmis = oku(gecmisAnahtari, []).map(mesajTemizle).filter(gecerliMesaj)
   mesajlariCiz()
   uyeAnahtari = 'uyeler:monke'
+  oyAnahtari = 'oylar:monke'
+  oylar = oku(oyAnahtari, {})
   uyeler = oku(uyeAnahtari, {})
   gorundu(benimId)
   // Dakikada bir: açık olanların "son görülme"si yenilenir (biz kapanınca en son hâli kalır)
@@ -897,10 +943,11 @@ async function katil(isim, oda) {
     const mesaj = {id: m?.id, u: userId, t: String(m?.t ?? '').slice(0, 2000), z: Number(m?.z)}
     if (m?.g !== undefined) mesaj.g = m.g
     if (m?.r !== undefined) mesaj.r = m.r
+    if (m?.p !== undefined) mesaj.p = m.p
     mesajTemizle(mesaj)
     if (gecerliMesaj(mesaj) && mesajEkle([mesaj])) {
       cal('mesaj')
-      ekranBildirimi(userId, 'mesaj', mesaj.r ? '📷 Fotoğraf' : mesaj.g ? 'GIF gönderdi' : mesaj.t)
+      ekranBildirimi(userId, 'mesaj', mesaj.r ? '📷 Fotoğraf' : mesaj.g ? 'GIF gönderdi' : mesaj.p ? '📊 Anket: ' + mesaj.p.s : mesaj.t)
     }
     // Fotoğrafın kendisi mesajdan önce geldiyse şimdi yerine koy.
     if (mesaj.r && bekleyenResimler.has(mesaj.id)) {
@@ -978,6 +1025,13 @@ async function katil(isim, oda) {
       }
     }
     mesajEkle(veri.m.slice(-GECMIS_MAX).map(mesajTemizle).filter(gecerliMesaj))
+    // Anket oyları: her kişinin en son oyu geçerli (süre bittikten sonraki oy sayılmaz).
+    if (veri.o && typeof veri.o === 'object') {
+      for (const [a, kimler] of Object.entries(veri.o).slice(0, 300)) {
+        if (kimler && typeof kimler === 'object')
+          for (const [u, v] of Object.entries(kimler).slice(0, 100)) oyGeldi(a, u, v?.s, v?.z)
+      }
+    }
     // Karşının bildiği son görülmeler: her kişi için en yenisi alınır (gelecek zaman kabul edilmez).
     if (veri.s && typeof veri.s === 'object') {
       const simdi = Date.now()
@@ -998,7 +1052,7 @@ async function katil(isim, oda) {
     if (userId === benimId) return
     room.addStream(gidenSes, {target: peerId}).catch(() => {})
     gorundu(benimId)
-    esitle.send({m: gecmis, p: profiller, s: uyeler}, {target: peerId}).catch(() => {})
+    esitle.send({m: gecmis, p: profiller, s: uyeler, o: oylar}, {target: peerId}).catch(() => {})
     for (const id of [...eksikResimler].slice(-30)) resimIste(id, peerId)
   })
   room.onUserLeave(({userId}) => {
@@ -1170,6 +1224,21 @@ async function katil(isim, oda) {
     const mesaj = {id: crypto.randomUUID(), u: benimId, t: ('GIF: ' + gif.t).slice(0, 200), z: Date.now(), g: gif}
     chat.send({id: mesaj.id, t: mesaj.t, z: mesaj.z, g: gif})
     mesajEkle([mesaj])
+  }
+
+  // Anket: mesaj olarak gider (eski sürümler "📊 Anket: soru" yazısını görür). Oylar ayrı kanaldan,
+  // gönderenin doğrulanmış kimliğiyle gelir; zamanı alan taraf koyar (saat farkı önemsiz).
+  anketGonder = ({s, o, sure}) => {
+    const z = Date.now()
+    const mesaj = {id: crypto.randomUUID(), u: benimId, t: ('📊 Anket: ' + s).slice(0, 220), z, p: {s, o, b: z + sure}}
+    chat.send({id: mesaj.id, t: mesaj.t, z, p: mesaj.p})
+    mesajEkle([mesaj])
+  }
+  const oyKanali = room.makeAction('oy')
+  oyKanali.onMessage((v, {userId}) => oyGeldi(v?.a, userId, v?.s, Date.now()))
+  oyVer = (a, secim) => {
+    oyGeldi(a, benimId, secim, Date.now())
+    oyKanali.send({a, s: secim}).catch(() => {})
   }
 
   // İsim değiştirme: kutudan çıkınca veya Enter'a basınca kaydedilir ve herkese yayılır.
@@ -1553,7 +1622,14 @@ function gecerliMesaj(m) {
     typeof m.u === 'string' && m.u.length <= 200 &&
     typeof m.t === 'string' && m.t.length > 0 && Number.isFinite(m.z) &&
     (m.g === undefined || gecerliGif(m.g)) &&
-    (m.r === undefined || (m.g === undefined && gecerliResim(m.r)))
+    (m.r === undefined || (m.g === undefined && gecerliResim(m.r))) &&
+    (m.p === undefined || (m.g === undefined && m.r === undefined && gecerliAnket(m.p)))
+}
+// Anket: soru, 2-6 seçenek, bitiş zamanı.
+function gecerliAnket(p) {
+  return !!p && typeof p === 'object' && typeof p.s === 'string' && p.s.length > 0 && p.s.length <= 200 &&
+    Array.isArray(p.o) && p.o.length >= 2 && p.o.length <= 6 &&
+    p.o.every(x => typeof x === 'string' && x.length > 0 && x.length <= 80) && Number.isFinite(p.b) && p.b > 0
 }
 
 // GIF bilgisi başkasından geldiği için sıkı kontrol: sadece Klipy'nin medya sunucularından
@@ -1573,6 +1649,7 @@ function mesajTemizle(m) {
   if (m && typeof m === 'object') {
     if (m.g !== undefined && !gecerliGif(m.g)) delete m.g
     if (m.r !== undefined && (m.g !== undefined || !gecerliResim(m.r))) delete m.r
+    if (m.p !== undefined && (m.g !== undefined || m.r !== undefined || !gecerliAnket(m.p))) delete m.p
   }
   return m
 }
@@ -1852,6 +1929,7 @@ function mesajlariCiz() {
     const t = document.createElement('div')
     if (m.r) t.append(resimElemani(m))
     else if (m.g) t.append(gifResmi(m))
+    else if (m.p) t.append(anketElemani(m))
     else emojiliYaz(t, m.t)
     d.append(t)
     return d
@@ -2032,6 +2110,8 @@ const RESIM_TIPLERI = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const RESIM_MAX = 1900 * 1024   // Trystero tek mesajda en çok 2 MB taşır
 const RESIM_KENAR = 1600        // gönderilmeden önce en uzun kenar bu kadara küçültülür
 const RESIM_SAKLA = 200         // bu bilgisayarda saklanan en çok fotoğraf (eskiler silinir)
+let anketGonder = () => {}, oyVer = () => {}   // odaya girince tanımlanır
+let oylar = {}, oyAnahtari = ''    // anket id -> {userId: {s: seçenek (-1: oy yok), z: zaman}}
 let resimGonder = async () => {}   // odaya girince tanımlanır
 let resimVeriGonder = async () => {}
 let resimIste = () => {}
@@ -2257,6 +2337,7 @@ const gifPaneliKapat = () => $('gifPanel').classList.remove('acik')
 $('gifAc').onclick = e => {
   e.stopPropagation()
   emojiPaneliKapat()
+  anketPaneliKapat()
   $('gifPanel').classList.contains('acik') ? gifPaneliKapat() : gifPaneliAc()
 }
 document.addEventListener('pointerdown', e => {
@@ -2302,6 +2383,7 @@ const emojiPaneliKapat = () => $('emojiPanel').classList.remove('acik')
 $('emojiAc').onclick = e => {
   e.stopPropagation()
   gifPaneliKapat()
+  anketPaneliKapat()
   $('emojiPanel').classList.contains('acik') ? emojiPaneliKapat() : emojiPaneliAc()
 }
 // Emojiyi imlecin olduğu yere koyar (seçili yazı varsa onun yerine). Panel açık kalır,
@@ -2561,6 +2643,123 @@ document.addEventListener('contextmenu', async e => {
         catch (err) { sohbetUyari(err.message || 'Favorilere eklenemedi') }
       }]])
 })
+
+// ---- Anket ----
+// Açma paneli: soru, 2-6 seçenek, süre. Sohbette kart olarak görünür; seçeneğe tıklayınca oy
+// verilir, kendi oyuna tekrar tıklayınca geri alınır. Süre bitince oy verilemez, kazanan vurgulanır.
+function anketSecenekEkle(odakla) {
+  const kutu = $('anketSecenekler')
+  if (kutu.children.length >= 6) return
+  const i = document.createElement('input')
+  i.maxLength = 80
+  i.placeholder = 'Seçenek ' + (kutu.children.length + 1)
+  // Enter: sonraki seçeneğe geç (yoksa yenisini ekle), son seçenekteyse ve boşsa gönder.
+  i.onkeydown = e => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    const sonraki = i.nextElementSibling
+    if (sonraki) sonraki.focus()
+    else if (i.value.trim() && kutu.children.length < 6) anketSecenekEkle(true)
+    else $('anketGonder').click()
+  }
+  kutu.append(i)
+  $('anketSecenekEkle').style.display = kutu.children.length >= 6 ? 'none' : ''
+  if (odakla) i.focus()
+}
+function anketPaneliAc() {
+  $('anketSoru').value = ''
+  $('anketSecenekler').replaceChildren()
+  $('anketHata').textContent = ''
+  anketSecenekEkle()
+  anketSecenekEkle()
+  $('anketPanel').classList.add('acik')
+  $('anketSoru').focus()
+}
+const anketPaneliKapat = () => $('anketPanel').classList.remove('acik')
+$('anketAc').onclick = e => {
+  e.stopPropagation()
+  gifPaneliKapat()
+  emojiPaneliKapat()
+  $('anketPanel').classList.contains('acik') ? anketPaneliKapat() : anketPaneliAc()
+}
+$('anketSecenekEkle').onclick = () => anketSecenekEkle(true)
+$('anketSoru').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('anketSecenekler').firstChild?.focus() } }
+$('anketGonder').onclick = () => {
+  const s = $('anketSoru').value.trim()
+  const o = [...new Set([...$('anketSecenekler').children].map(i => i.value.trim()).filter(Boolean))]
+  if (!s) { $('anketHata').textContent = 'Soruyu yaz'; $('anketSoru').focus(); return }
+  if (o.length < 2) { $('anketHata').textContent = 'En az 2 farklı seçenek lazım'; return }
+  anketGonder({s, o, sure: Number($('anketSure').value)})
+  anketPaneliKapat()
+  $('mesaj').focus()
+}
+document.addEventListener('pointerdown', e => {
+  if (!$('anketPanel').contains(e.target) && !$('anketAc').contains(e.target)) anketPaneliKapat()
+})
+document.addEventListener('keydown', e => { if (e.key === 'Escape') anketPaneliKapat() })
+
+// Oy: her kişinin en son oyu geçerli. Süre bittikten sonra (5 sn pay) gelen oy sayılmaz.
+function oyGeldi(a, u, secim, z) {
+  const m = typeof a === 'string' && gecmis.find(x => x.id === a && x.p)
+  if (!m || typeof u !== 'string' || u.length > 200 || !Number.isInteger(secim) || secim < -1 ||
+      secim >= m.p.o.length || !Number.isFinite(z) || z > m.p.b + 5000) return
+  const eski = oylar[a]?.[u]
+  if (eski && eski.z >= z) return
+  ;(oylar[a] ??= {})[u] = {s: secim, z}
+  kaydet(oyAnahtari, oylar)
+  anketGuncelle(a)
+}
+
+const anketler = new Map()   // mesaj id -> kart (her çizimde baştan yaratılmasın)
+function anketElemani(m) {
+  let el = anketler.get(m.id)
+  if (!el) {
+    el = document.createElement('div')
+    el.className = 'anket'
+    anketler.set(m.id, el)
+    anketCiz(m, el)
+  }
+  return el
+}
+function kalanSure(ms) {
+  const dk = Math.max(1, Math.ceil(ms / 60e3))
+  if (dk < 60) return dk + ' dk'
+  const sa = Math.floor(dk / 60)
+  return sa < 24 ? sa + ' saat' + (dk % 60 ? ' ' + dk % 60 + ' dk' : '') : Math.round(sa / 24) + ' gün'
+}
+function anketCiz(m, el) {
+  const {s, o, b} = m.p, bitti = Date.now() > b
+  const oy = Object.entries(oylar[m.id] || {}).filter(([, v]) => v.s >= 0)
+  const sayilar = o.map((_, i) => oy.filter(([, v]) => v.s === i).length)
+  const toplam = oy.length, enCok = Math.max(...sayilar)
+  const benim = oylar[m.id]?.[benimId]?.s ?? -1
+  el.classList.toggle('bitti', bitti)
+  const soru = Object.assign(document.createElement('div'), {className: 'soru', textContent: s})
+  const bilgi = Object.assign(document.createElement('div'), {className: 'bilgi',
+    textContent: `${toplam} oy · ${bitti ? 'Anket bitti' : kalanSure(b - Date.now()) + ' kaldı'}`})
+  const secenekler = o.map((ad, i) => {
+    const d = document.createElement('button')
+    d.className = 'secenek' + (i === benim ? ' benim' : '') + (bitti && enCok > 0 && sayilar[i] === enCok ? ' kazanan' : '')
+    d.disabled = bitti
+    const yuzde = toplam ? Math.round(sayilar[i] / toplam * 100) : 0
+    const cubuk = document.createElement('i')
+    cubuk.style.width = yuzde + '%'
+    const yazi = Object.assign(document.createElement('span'), {textContent: ad})
+    const oran = Object.assign(document.createElement('span'), {className: 'oran', textContent: toplam ? `%${yuzde} (${sayilar[i]})` : ''})
+    d.append(cubuk, yazi, oran)
+    const kimler = oy.filter(([, v]) => v.s === i).map(([u]) => isimAl(u))
+    d.title = kimler.length ? kimler.join(', ') : (bitti ? 'Oy yok' : 'Oy ver')
+    d.onclick = () => oyVer(m.id, i === benim ? -1 : i)
+    return d
+  })
+  el.replaceChildren(soru, bilgi, ...secenekler)
+}
+function anketGuncelle(id) {
+  const el = anketler.get(id), m = gecmis.find(x => x.id === id)
+  if (el && m?.p) anketCiz(m, el)
+}
+// Kalan süre ve bitiş durumu yenilensin.
+setInterval(() => { for (const id of anketler.keys()) if (anketler.get(id).isConnected) anketGuncelle(id) }, 5000)
 </script>
 </body>
 </html>
