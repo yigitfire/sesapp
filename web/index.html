@@ -12,8 +12,15 @@
   #sol{width:260px;padding:12px;border-right:1px solid #2a2d35;display:flex;flex-direction:column;gap:10px;overflow:auto}
   #sag{flex:1;display:flex;flex-direction:column}
   #mesajlar{flex:1;overflow:auto;padding:12px;font-size:14px}
-  #mesajlar div{margin-bottom:6px}
-  #mesajlar b{color:#8fb0ff}
+  #mesajlar div{margin-bottom:6px;overflow-wrap:anywhere}
+  #mesajlar time{color:#6b7080;font-size:11px;margin-right:6px}
+  #sesUyari{display:none;margin:10px 12px 0;padding:8px;border-radius:6px;background:#3a2f12;color:#f5d047;font-size:13px;cursor:pointer}
+  #benIsim{width:100%;box-sizing:border-box;padding:4px 6px;font-weight:bold;background:transparent;border:1px solid transparent}
+  #benIsim:hover,#benIsim:focus{border-color:#333;background:#22252c;outline:none}
+  .renkler{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}
+  .renkler button{width:18px;height:18px;padding:0;border-radius:50%;border:2px solid transparent}
+  .renkler button.secili{border-color:#fff}
+  .kisi .ad{font-weight:bold}
   #yaz{display:flex;gap:6px;padding:10px;border-top:1px solid #2a2d35}
   #yaz input{flex:1}
   .kisi{background:#1d2026;padding:8px;border-radius:6px;font-size:13px}
@@ -36,7 +43,8 @@
 <div id="app">
   <div id="sol">
     <div class="kisi" id="ben">
-      <div><b id="benIsim"></b> (sen)</div>
+      <input id="benIsim" maxlength="24" title="İsmini değiştirmek için tıkla">
+      <div class="renkler" id="renkler"></div>
       <div>Mikrofon: <span id="micYuzde">100</span>%</div>
       <input type="range" id="micGain" min="0" max="200" value="100">
       <div class="bar"><i id="micBar"></i></div>
@@ -46,6 +54,7 @@
     <button id="cik" class="kirmizi">Çık</button>
   </div>
   <div id="sag">
+    <div id="sesUyari">Sesi açmak için buraya tıkla</div>
     <div id="mesajlar"></div>
     <div id="yaz"><input id="mesaj" placeholder="Mesaj yaz..."><button id="gonder">Gönder</button></div>
   </div>
@@ -57,30 +66,74 @@ import {joinRoom} from './vendor/trystero-0.27.0.js'
 const $ = id => document.getElementById(id)
 // Masaüstü uygulamasında (Tauri) mikrofon tarayıcı motoru yerine Rust'tan gelir.
 const masaustu = !!window.__TAURI__
+
+// Koyu arka planda okunaklı 12 renk.
+const RENKLER = ['#5b8cff', '#4cc3ff', '#2ed3b7', '#3ccf6e', '#a3e05a', '#f5d047',
+                 '#ff9f43', '#ff7a6b', '#ff5a6e', '#ff6fb5', '#9b6bff', '#c9a7ff']
+const GECMIS_MAX = 1000
+
+// Kalıcı kayıt (cihazda). Bozuk/erişilemeyen depoda uygulama yine çalışsın diye try içinde.
+const oku = (k, v) => { try { return JSON.parse(localStorage.getItem(k)) ?? v } catch { return v } }
+const kaydet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} }
+
+// Hesap = Trystero'nun cihazda sakladığı kalıcı, şifreli userId. Mesajlar isme değil
+// bu kimliğe bağlı; isim/renk değişince eski mesajlar da yeni isim/renkle görünür.
+// profiller: userId -> {isim, renk, g}. g: sahibinin son değiştirdiği an (yenisi kazanır).
+const profiller = oku('profiller', {})
+let gecmis = []          // [{id, u: userId, t: metin, z: zaman}]
+let gecmisAnahtari = ''  // her odanın geçmişi ayrı saklanır
+
+let ctx, room, profil, benimId = ''
+const kisiler = new Map()
+
+const gecerliRenk = r => RENKLER.includes(r) ? r : null
+// İlk renk kimlikten türetilir: herkes baştan farklı (büyük ihtimalle) bir renkle başlar.
+const varsayilanRenk = id => {
+  let h = 0
+  for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0
+  return RENKLER[h % RENKLER.length]
+}
+const isimAl = id => profiller[id]?.isim || 'Biri'
+const renkAl = id => gecerliRenk(profiller[id]?.renk) || varsayilanRenk(id)
+
 $('isim').value = localStorage.getItem('isim') || ''
 $('oda').value = localStorage.getItem('oda') || ''
 
-let ctx, room, profil
-const kisiler = new Map()
-
-$('katil').onclick = async () => {
-  const isim = $('isim').value.trim()
+$('katil').onclick = () => {
+  const isim = $('isim').value.trim().slice(0, 24)
   const oda = $('oda').value.trim()
   if (!isim || !oda) { $('hata').textContent = 'Ad ve oda şifresi lazım'; return }
   localStorage.setItem('isim', isim)
   localStorage.setItem('oda', oda)
+  sessionStorage.removeItem('cikti')
+  katil(isim, oda)
+}
 
+// Otomatik giriş: daha önce girilmişse doğrudan odaya bağlan. "Çık"a basılan oturumda
+// (sayfa yenilense bile) otomatik girme; uygulama kapatılıp açılınca yine otomatik girer.
+if ($('isim').value && $('oda').value && !sessionStorage.getItem('cikti')) {
+  $('hata').textContent = 'Bağlanıyor...'
+  katil($('isim').value, $('oda').value)
+}
+
+async function katil(isim, oda) {
+  // Otomatik giriş sürerken butona basılırsa ikinci kez bağlanma.
+  if ($('katil').disabled) return
+  $('katil').disabled = true
   // Masaüstünde Rust sesi 48 kHz veriyor; AudioContext de 48 kHz olmalı ki
   // hız dönüşümü olmasın (ses kartı farklıysa tarayıcı çıkışta kendisi çevirir).
   ctx = new AudioContext(masaustu
     ? {latencyHint: 'interactive', sampleRate: 48000}
     : {latencyHint: 'interactive'})
+  sesKilidiniAc(ctx)
 
   let micKaynak
   try {
     micKaynak = masaustu ? await masaustuMikrofon(ctx) : await tarayiciMikrofon(ctx)
   } catch (e) {
     $('hata').textContent = masaustu ? 'Mikrofon açılamadı: ' + e : 'Mikrofon izni verilmedi'
+    $('katil').disabled = false
+    ctx.close()
     return
   }
 
@@ -111,49 +164,153 @@ $('katil').onclick = async () => {
     if (err.code === 'room-full') $('hata').textContent = 'Oda dolu (max 6 kişi)'
   })
 
-  profil = room.makeUserState('profil', {isim})
-  // makeUserState sadece varsayılanı tanımlar; kendi ismimizi odaya yayınlamak için set gerekir.
-  profil.set({isim})
+  benimId = (await room.getSelf()).userId
+  const benimRenk = gecerliRenk(localStorage.getItem('renk')) || varsayilanRenk(benimId)
+  profilGuncelle(benimId, {isim, renk: benimRenk, g: Date.now()}, true)
+
+  gecmisAnahtari = 'gecmis:' + oda
+  gecmis = oku(gecmisAnahtari, []).filter(gecerliMesaj)
+  mesajlariCiz()
+
+  // Profil (isim + renk): Trystero bunu doğrulanmış userId ile yayar ve sonradan
+  // girenlere kendisi iletir. makeUserState sadece varsayılanı tanımlar; set yayınlar.
+  profil = room.makeUserState('profil', {isim: '', renk: '', g: 0})
+  profil.set(profiller[benimId]).catch(() => {})
   profil.onChange((data, {userId, self, removed}) => {
     if (self) return
     if (removed) return kisiSil(userId)
-    kisiEkle(userId).querySelector('.ad').textContent = data.isim
+    if (!data?.isim) return
+    profilGuncelle(userId, data, true)
+    kisiEkle(userId)
   })
 
   await room.addStream(gidenSes)
+
+  // Sohbet. Gönderenin kimliği mesajın içinden değil, Trystero'nun doğruladığı
+  // userId'den alınır; kimse başkası adına mesaj atamaz.
+  const chat = room.makeAction('chat')
+  chat.onMessage((m, {userId}) => {
+    // Eski sürüm düz metin yollar; onu da kabul et.
+    if (typeof m === 'string') m = {id: crypto.randomUUID(), t: m, z: Date.now()}
+    const mesaj = {id: m?.id, u: userId, t: String(m?.t ?? '').slice(0, 2000), z: Number(m?.z)}
+    if (gecerliMesaj(mesaj)) mesajEkle([mesaj])
+  })
+
+  // Geçmiş eşitleme: biri girince iki taraf da elindeki geçmişi ve bildiği profilleri
+  // karşıya yollar; eksikler id'ye göre birleştirilir. Böylece kapalıyken yazılanlar,
+  // o mesajı görmüş biri çevrimiçiyse gelir.
+  const esitle = room.makeAction('gecmis')
+  esitle.onMessage(veri => {
+    if (!veri || !Array.isArray(veri.m)) return
+    if (veri.p && typeof veri.p === 'object') {
+      for (const [id, p] of Object.entries(veri.p)) {
+        // Odada olan kişinin profili zaten doğrulanmış olarak geliyor; ona dokunma.
+        if (id !== benimId && !kisiler.has(id)) profilGuncelle(id, p, false)
+      }
+    }
+    mesajEkle(veri.m.slice(-GECMIS_MAX).filter(gecerliMesaj))
+  })
+
   room.onUserJoin(({userId}) => {
     kisiEkle(userId)
     room.addStream(gidenSes, {target: userId})
+    esitle.send({m: gecmis, p: profiller}, {target: userId}).catch(() => {})
   })
   room.onUserLeave(({userId}) => kisiSil(userId))
 
   room.onPeerStream((stream, {userId}) => sesBagla(userId, stream))
 
-  const chat = room.makeAction('chat')
-  chat.onMessage((text, {userId}) => {
-    const k = kisiler.get(userId)
-    mesajYaz(k ? k.el.querySelector('.ad').textContent : 'Biri', text)
-  })
   const gonder = () => {
-    const t = $('mesaj').value.trim()
+    const t = $('mesaj').value.trim().slice(0, 2000)
     if (!t) return
-    chat.send(t)
-    mesajYaz(isim, t)
+    const mesaj = {id: crypto.randomUUID(), u: benimId, t, z: Date.now()}
+    chat.send({id: mesaj.id, t: mesaj.t, z: mesaj.z})
+    mesajEkle([mesaj])
     $('mesaj').value = ''
   }
   $('gonder').onclick = gonder
   $('mesaj').onkeydown = e => { if (e.key === 'Enter') gonder() }
 
+  // İsim değiştirme: kutudan çıkınca veya Enter'a basınca kaydedilir ve herkese yayılır.
+  $('benIsim').value = isim
+  const isimKaydet = () => {
+    const yeni = $('benIsim').value.trim().slice(0, 24)
+    if (!yeni) { $('benIsim').value = isimAl(benimId); return }
+    if (yeni === isimAl(benimId)) return
+    localStorage.setItem('isim', yeni)
+    benimProfilimiYay({isim: yeni})
+  }
+  $('benIsim').onchange = isimKaydet
+  $('benIsim').onkeydown = e => { if (e.key === 'Enter') $('benIsim').blur() }
+
+  // Renk seçimi
+  for (const r of RENKLER) {
+    const b = document.createElement('button')
+    b.style.background = r
+    b.dataset.renk = r
+    b.title = 'Rengini seç'
+    b.onclick = () => {
+      localStorage.setItem('renk', r)
+      benimProfilimiYay({renk: r})
+    }
+    $('renkler').appendChild(b)
+  }
+  benimKartimiCiz()
+
   $('cik').onclick = async () => {
+    // Bu oturumda otomatik girişi kapat; yoksa yenilenen sayfa hemen geri girerdi.
+    sessionStorage.setItem('cikti', '1')
     room.leave()
     // Sayfa yenilense de Rust tarafındaki mikrofon açık kalırdı; önce kapat.
     if (masaustu) await window.__TAURI__.core.invoke('mikrofon_kapat')
     location.reload()
   }
 
-  $('benIsim').textContent = isim
   $('giris').style.display = 'none'
   $('app').style.display = 'flex'
+}
+
+function benimProfilimiYay(degisen) {
+  profilGuncelle(benimId, {...profiller[benimId], ...degisen, g: Date.now()}, true)
+  profil.set(profiller[benimId]).catch(() => {})
+  benimKartimiCiz()
+}
+
+function benimKartimiCiz() {
+  const renk = renkAl(benimId)
+  $('benIsim').style.color = renk
+  for (const b of $('renkler').children) b.classList.toggle('secili', b.dataset.renk === renk)
+}
+
+// Profil kaydını günceller. kesin=true: doğrulanmış kaynak (kişinin kendisi);
+// kesin=false: başkasından duyulan, sadece daha yeniyse alınır.
+function profilGuncelle(id, p, kesin) {
+  if (!p || typeof p.isim !== 'string' || !p.isim.trim()) return
+  const yeni = {isim: p.isim.trim().slice(0, 24), renk: gecerliRenk(p.renk) || varsayilanRenk(id), g: Number(p.g) || 0}
+  const eski = profiller[id]
+  if (!kesin && eski && eski.g >= yeni.g) return
+  if (eski && eski.isim === yeni.isim && eski.renk === yeni.renk && eski.g === yeni.g) return
+  profiller[id] = yeni
+  kaydet('profiller', profiller)
+  kisiGuncelle(id)
+  mesajlariCiz()
+}
+
+function gecerliMesaj(m) {
+  return m && typeof m.id === 'string' && m.id.length <= 64 &&
+    typeof m.u === 'string' && m.u.length <= 200 &&
+    typeof m.t === 'string' && m.t.length > 0 && Number.isFinite(m.z)
+}
+
+// Yeni mesajları id'ye göre birleştirir, zamana göre sıralar, son 1000'i saklar.
+function mesajEkle(liste) {
+  const varOlan = new Set(gecmis.map(m => m.id))
+  const yeniler = []
+  for (const m of liste) if (!varOlan.has(m.id)) { varOlan.add(m.id); yeniler.push(m) }
+  if (!yeniler.length) return
+  gecmis = gecmis.concat(yeniler).sort((a, b) => a.z - b.z).slice(-GECMIS_MAX)
+  kaydet(gecmisAnahtari, gecmis)
+  mesajlariCiz()
 }
 
 // Tarayıcıda (web linki): mikrofon tarayıcının kendi ses işlemesiyle açılır.
@@ -195,7 +352,28 @@ function kisiEkle(userId) {
     el.querySelector('.yuzde').textContent = e.target.value
   }
   kisiler.set(userId, {el, gain})
+  kisiGuncelle(userId)
   return el
+}
+
+// Kişi kartındaki isim ve rengi profile göre yeniler.
+function kisiGuncelle(userId) {
+  const k = kisiler.get(userId)
+  if (!k || !profiller[userId]) return
+  const ad = k.el.querySelector('.ad')
+  ad.textContent = isimAl(userId)
+  ad.style.color = renkAl(userId)
+}
+
+// Tarayıcılar, kullanıcı bir yere tıklamadan sesi başlatmayabilir (otomatik girişte
+// olur). O durumda uyarı gösterilir; ilk tıklama/tuşta ses açılır.
+function sesKilidiniAc(ctx) {
+  const guncelle = () => { $('sesUyari').style.display = ctx.state === 'running' ? 'none' : 'block' }
+  ctx.onstatechange = guncelle
+  const ac = () => { if (ctx.state !== 'running') ctx.resume() }
+  document.addEventListener('pointerdown', ac)
+  document.addEventListener('keydown', ac)
+  setTimeout(guncelle, 500)
 }
 
 function sesBagla(userId, stream) {
@@ -241,13 +419,26 @@ function seviyeIzle(analiz, cb) {
   return () => clearTimeout(zamanlayici)
 }
 
-function mesajYaz(kim, text) {
-  const d = document.createElement('div')
-  const b = document.createElement('b')
-  b.textContent = kim + ': '
-  d.append(b, document.createTextNode(text))
-  $('mesajlar').appendChild(d)
-  $('mesajlar').scrollTop = 1e9
+// Bütün geçmişi çizer. İsimler/renkler çizim anında profilden alınır; biri ismini
+// değiştirince eski mesajları da yeni isimle görünür. En fazla 1000 satır, hızlı.
+function mesajlariCiz() {
+  const kutu = $('mesajlar')
+  const alttaydi = kutu.scrollHeight - kutu.scrollTop - kutu.clientHeight < 40
+  const bugun = new Date().toDateString()
+  kutu.replaceChildren(...gecmis.map(m => {
+    const d = document.createElement('div')
+    const zaman = document.createElement('time')
+    const tarih = new Date(m.z)
+    zaman.textContent = (tarih.toDateString() === bugun ? '' :
+      tarih.toLocaleDateString('tr-TR', {day: '2-digit', month: '2-digit'}) + ' ') +
+      tarih.toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'})
+    const b = document.createElement('b')
+    b.textContent = isimAl(m.u) + ': '
+    b.style.color = renkAl(m.u)
+    d.append(zaman, b, document.createTextNode(m.t))
+    return d
+  }))
+  if (alttaydi) kutu.scrollTop = 1e9
 }
 </script>
 </body>

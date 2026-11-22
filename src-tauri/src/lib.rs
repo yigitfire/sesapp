@@ -158,13 +158,12 @@ pub fn calistir() {
     let builder = builder.on_page_load(|webview, yukleme| {
         if matches!(yukleme.event(), tauri::webview::PageLoadEvent::Finished) {
             let _ = webview.eval(KONSOL_BETIGI);
-            // Otomatik test: SESAPP_TEST_ODA verilirse "Otomatik" adıyla o odaya girer.
-            if let Ok(oda) = std::env::var("SESAPP_TEST_ODA") {
-                let _ = webview.eval(format!(
-                    "document.getElementById('isim').value='Otomatik';\
-                     document.getElementById('oda').value={oda:?};\
-                     document.getElementById('katil').click()"
-                ));
+            // Otomatik test: SESAPP_TEST_BETIK verilirse o JS dosyası sayfada çalıştırılır
+            // (giriş yapma, mesaj yazma, ekranı okuyup console.log ile terminale yazma).
+            if let Ok(yol) = std::env::var("SESAPP_TEST_BETIK") {
+                if let Ok(betik) = std::fs::read_to_string(yol) {
+                    let _ = webview.eval(betik);
+                }
             }
         }
     });
