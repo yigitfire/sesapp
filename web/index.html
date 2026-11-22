@@ -593,26 +593,66 @@ kenarCekme($('sagTutamak'), $('uyeler'), $('sol'), 'sagGenislik', 160, 360, -1)
 // Masaüstünde uygulamanın sürümü (tauri.conf.json'daki), tarayıcıda "Web".
 if (masaustu) window.__TAURI__.app.getVersion().then(v => { $('surum').textContent = 'Sürüm ' + v }).catch(() => {})
 
-// Bildirim sesleri: dosya yok, kısa tonlar burada üretilir (iki nota: giriş yükselen,
-// çıkış alçalan, mesaj kısa ve tiz). Sadece hoparlöre çalar; mikrofona ve oyun sesine dokunmaz.
+// Bildirim sesleri: dosya yok, burada üretilir. Her nota çan gibi tınlar (ana ton + hafif
+// üst tonlar) ve kısa bir yankıdan geçer. Giriş: yükselen üç nota (do-mi-sol), çıkış: alçalan
+// ve daha boğuk üç nota, mesaj: kısa bir "damla" ve tiz bir çın. Sadece hoparlöre çalar;
+// mikrofona ve oyun sesine dokunmaz.
 const TONLAR = {
-  giris: {notalar: [[587, 0], [880, .09]], sure: .16},
-  cikis: {notalar: [[880, 0], [587, .09]], sure: .16},
-  mesaj: {notalar: [[1175, 0], [1568, .06]], sure: .09},
+  giris: {ses: .2, notalar: [[523.25, 0, .5], [659.25, .075, .5], [783.99, .15, .7]],
+    ust: [[2, .3], [3, .1]], parlaklik: 6000},
+  cikis: {ses: .17, notalar: [[783.99, 0, .45], [622.25, .09, .45], [466.16, .18, .65]],
+    ust: [[2, .18]], parlaklik: 1800},
+  mesaj: {ses: .26, damla: true, notalar: [[1318.5, .055, .35]],
+    ust: [[2.76, .12], [5.4, .04]], parlaklik: 8000},
+}
+let bildirimCikisi = null
+function bildirimHatti() {
+  // Hepsinin geçtiği ortak çıkış: biraz yankı (geri beslemeli gecikme) ve sesi toparlayan sıkıştırıcı.
+  if (bildirimCikisi?.context === ctx) return bildirimCikisi
+  const giris = ctx.createGain(), sikistir = ctx.createDynamicsCompressor()
+  const gecikme = ctx.createDelay(1), geri = ctx.createGain(), yanki = ctx.createGain(), suz = ctx.createBiquadFilter()
+  gecikme.delayTime.value = .13; geri.gain.value = .28; yanki.gain.value = .22
+  suz.type = 'lowpass'; suz.frequency.value = 2800
+  sikistir.threshold.value = -18; sikistir.ratio.value = 4
+  giris.connect(sikistir)
+  giris.connect(gecikme).connect(suz).connect(geri).connect(gecikme)
+  suz.connect(yanki).connect(sikistir)
+  sikistir.connect(ctx.destination)
+  bildirimCikisi = giris
+  return giris
 }
 function cal(tur) {
   if (!ctx || !bildirim[tur]) return
-  const {notalar, sure} = TONLAR[tur]
-  for (const [hz, gecikme] of notalar) {
-    const t = ctx.currentTime + .01 + gecikme
+  const {ses, notalar, ust, parlaklik, damla} = TONLAR[tur]
+  const cikis = bildirimHatti(), bas = ctx.currentTime + .02
+  const suz = ctx.createBiquadFilter()
+  suz.type = 'lowpass'; suz.frequency.value = parlaklik
+  suz.connect(cikis)
+  const ton = (hz, t, sure, genlik, kayma) => {
     const o = ctx.createOscillator(), g = ctx.createGain()
-    o.frequency.value = hz
+    o.frequency.setValueAtTime(hz * (kayma || 1), t)
+    if (kayma) o.frequency.exponentialRampToValueAtTime(hz, t + .06)
     g.gain.setValueAtTime(0, t)
-    g.gain.linearRampToValueAtTime(.12, t + .01)
+    g.gain.linearRampToValueAtTime(genlik, t + .006)
     g.gain.exponentialRampToValueAtTime(.0001, t + sure)
-    o.connect(g).connect(ctx.destination)
-    o.start(t)
-    o.stop(t + sure + .02)
+    o.connect(g).connect(suz)
+    o.start(t); o.stop(t + sure + .05)
+  }
+  // Mesajın başındaki "damla": hızla yükselen kısa bir ton.
+  if (damla) {
+    const o = ctx.createOscillator(), g = ctx.createGain()
+    o.frequency.setValueAtTime(520, bas)
+    o.frequency.exponentialRampToValueAtTime(1500, bas + .06)
+    g.gain.setValueAtTime(0, bas)
+    g.gain.linearRampToValueAtTime(ses * .9, bas + .008)
+    g.gain.exponentialRampToValueAtTime(.0001, bas + .09)
+    o.connect(g).connect(suz)
+    o.start(bas); o.stop(bas + .12)
+  }
+  for (const [hz, gecikme, sure] of notalar) {
+    const t = bas + gecikme
+    ton(hz, t, sure, ses, 1.01)
+    for (const [oran, pay] of ust) ton(hz * oran, t, sure * .5, ses * pay)
   }
 }
 // Odaya ilk girerken zaten seste olanlar için "girdi" sesi çalmasın diye ilk birkaç saniye susulur.
