@@ -162,6 +162,7 @@
   #fotoHata:empty{display:none}
   #odadanCik{width:100%;margin-top:18px;padding:9px;border-radius:8px;font-size:14px;color:var(--kirmizi);background:var(--bg3)}
   #odadanCik:hover{background:var(--bg4)}
+  #surum{margin-top:12px;font-size:11px;text-align:center;color:var(--soluk)}
 
   ::-webkit-scrollbar{width:8px}
   ::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px}
@@ -260,6 +261,7 @@
     <label class="anahtar">Biri sesten çıkınca<input type="checkbox" data-bildirim="cikis"></label>
     <label class="anahtar">Yeni mesaj gelince<input type="checkbox" data-bildirim="mesaj"></label>
     <button id="odadanCik">Odadan çık</button>
+    <div id="surum">Web</div>
   </div>
 </div>
 
@@ -347,6 +349,8 @@ $('ayarKapat').onclick = ayarKapat
 $('ayarlar').onclick = e => { if (e.target === $('ayarlar')) ayarKapat() }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') ayarKapat() })
 $('odadanCik').onclick = () => odadanCik()
+// Masaüstünde uygulamanın sürümü (tauri.conf.json'daki), tarayıcıda "Web".
+if (masaustu) window.__TAURI__.app.getVersion().then(v => { $('surum').textContent = 'Sürüm ' + v }).catch(() => {})
 
 // Bildirim sesleri: dosya yok, kısa tonlar burada üretilir (iki nota: giriş yükselen,
 // çıkış alçalan, mesaj kısa ve tiz). Sadece hoparlöre çalar; mikrofona ve oyun sesine dokunmaz.
@@ -490,8 +494,6 @@ async function katil(isim, oda) {
   // Mikrofon açılana kadar "seste değil" görün (açılmazsa da öyle kalır).
   sesDurumu.set({var: false}).catch(() => {})
 
-  await room.addStream(gidenSes)
-
   // Sohbet. Gönderenin kimliği mesajın içinden değil, Trystero'nun doğruladığı
   // userId'den alınır; kimse başkası adına mesaj atamaz.
   const chat = room.makeAction('chat')
@@ -518,10 +520,15 @@ async function katil(isim, oda) {
     mesajEkle(veri.m.slice(-GECMIS_MAX).filter(gecerliMesaj))
   })
 
-  room.onUserJoin(({userId}) => {
-    kisiEkle(userId)
-    room.addStream(gidenSes, {target: userId})
-    esitle.send({m: gecmis, p: profiller}, {target: userId}).catch(() => {})
+  room.onUserJoin(({userId}) => kisiEkle(userId))
+  // Ses ve geçmiş, kişi değil her yeni BAĞLANTI için gönderilir. Biri uygulamayı kapatıp
+  // hızlıca açınca eski bağlantısı bizde birkaç saniye daha açık görünür; Trystero o yüzden
+  // "kişi katıldı" (onUserJoin) demez. Eskiden ses orada gönderildiği için yeni bağlantıya
+  // hiç gitmiyordu: o kişi bizi duymuyor, biz onu duyuyorduk.
+  room.onPeerJoin(({peerId, userId}) => {
+    if (userId === benimId) return
+    room.addStream(gidenSes, {target: peerId}).catch(() => {})
+    esitle.send({m: gecmis, p: profiller}, {target: peerId}).catch(() => {})
   })
   room.onUserLeave(({userId}) => {
     if (seste.get(userId) === true) cal('cikis')
@@ -529,7 +536,23 @@ async function katil(isim, oda) {
     seste.delete(userId)
   })
 
-  room.onPeerStream((stream, {userId}) => sesBagla(userId, stream))
+  // Her bağlantının ses akışı ayrı tutulur. Bir kişinin yeni bağlantısı gelince onun sesi
+  // çalınır; çalınan bağlantı kapanırsa (kişi hâlâ odadaysa) kalan bağlantısına geçilir.
+  const akislar = new Map()  // peerId -> {userId, stream}
+  room.onPeerStream((stream, {userId, peerId}) => {
+    if (userId === benimId) return
+    akislar.set(peerId, {userId, stream})
+    sesBagla(userId, stream)
+  })
+  room.onPeerLeave(({peerId, userId}) => {
+    const a = akislar.get(peerId)
+    akislar.delete(peerId)
+    const k = kisiler.get(userId)
+    if (!a || !k || k.audio?.srcObject !== a.stream) return
+    sesiSok(k)
+    const kalan = [...akislar.values()].findLast(x => x.userId === userId)
+    if (kalan) sesBagla(userId, kalan.stream)
+  })
 
   const gonder = () => {
     const t = $('mesaj').value.trim().slice(0, 2000)
@@ -864,6 +887,9 @@ function sesKilidiniAc(ctx) {
 function sesBagla(userId, stream) {
   kisiEkle(userId)
   const k = kisiler.get(userId)
+  // Aynı kişiden yeni bağlantıyla yeni akış geldiyse eskisini sök (yeniden açılınca olur).
+  if (k.audio?.srcObject === stream) return
+  sesiSok(k)
   const a = new Audio()
   a.srcObject = stream
   a.muted = true
@@ -880,12 +906,17 @@ function sesBagla(userId, stream) {
 function kisiSil(userId) {
   const k = kisiler.get(userId)
   if (!k) return
-  k.izlemeyiDurdur?.()
-  k.kaynak?.disconnect()
+  sesiSok(k)
   k.gain.disconnect()
-  if (k.audio) k.audio.srcObject = null
   k.el.remove()
   kisiler.delete(userId)
+}
+
+function sesiSok(k) {
+  k.izlemeyiDurdur?.()
+  k.kaynak?.disconnect()
+  if (k.audio) k.audio.srcObject = null
+  k.izlemeyiDurdur = k.kaynak = k.audio = null
 }
 
 // 100 ms'de bir ses seviyesini ölçer. Dönen fonksiyon ölçümü durdurur
