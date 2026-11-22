@@ -137,6 +137,9 @@
   #sesBagli .yazi{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
   #sesBagli b{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--vurgu)}
   #sesBagli b .i{width:15px;height:15px}
+  /* Sinyal rengi gerçek bağlantıya göre: iyi lime, yavaş sarı, kötü kırmızı. */
+  #sesBagli b.orta{color:#f0b232}
+  #sesBagli b.kotu{color:var(--kirmizi)}
   #sesBagli span{font-size:12px;color:var(--soluk)}
   #sesBagli .ib{width:32px}
   /* Mikrofon/kulaklık okunun açtığı küçük menü: panelin hemen üstünde açılır. */
@@ -207,6 +210,7 @@
   #emojiIzgara button{font-size:24px;line-height:1;padding:5px 0;border-radius:6px;
                       font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}
   #emojiIzgara button:hover{background:var(--bg4)}
+  #emojiIzgara button img{width:26px;height:26px;vertical-align:middle}
   .msj img.gif{display:block;max-width:100%;height:auto;margin:4px 0 2px;border-radius:8px;background:var(--bg3)}
   /* Gri zemin sadece yüklenirken yer tutar; yüklenince kalkar (şeffaf GIF'ler kutu içinde görünmesin). */
   .msj img.gif.yuklendi{background:none}
@@ -219,6 +223,17 @@
            background:color-mix(in srgb,var(--bg) 85%,transparent);align-items:center;justify-content:center;
            font-weight:600;color:var(--vurgu);pointer-events:none}
   #surukle.acik{display:flex}
+  #oneri{display:none;position:absolute;left:16px;right:16px;bottom:72px;z-index:3;padding:6px;border-radius:10px;
+         background:var(--bg2);box-shadow:0 12px 32px #0007}
+  #oneri.acik{display:block}
+  #oneri h4{margin:4px 8px 6px;font-size:11px;font-weight:600;color:var(--soluk)}
+  #oneri button{display:flex;align-items:center;gap:10px;width:100%;padding:5px 8px;border-radius:6px;text-align:left;font-size:14px}
+  #oneri button.secili{background:var(--bg4)}
+  #oneri .e{width:24px;text-align:center;font-size:20px;line-height:1;font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}
+  #oneri img{width:24px;height:24px}
+  #oneri small{margin-left:auto;font-size:11px;color:var(--soluk)}
+  .msj img.ozelEmoji{width:1.4em;height:1.4em;vertical-align:-.3em;margin:0 1px}
+  .msj .sadeceEmoji img.ozelEmoji{width:3em;height:3em}
   #sohbetUyari{margin:0 16px 6px;font-size:12px;color:var(--kirmizi)}
   #sohbetUyari:empty{display:none}
   #yaz #resimAc{margin-left:4px}
@@ -370,6 +385,7 @@
     <div id="sesUyari">Sesi açmak için tıkla</div>
     <div id="mesajlar"></div>
     <div id="surukle">Fotoğrafı bırak, gönderelim</div>
+    <div id="oneri"></div>
     <div id="sohbetUyari"></div>
     <div id="yaz">
       <button class="ib" id="resimAc" title="Fotoğraf gönder"><svg class="i"><use href="#i-resim"/></svg></button>
@@ -431,11 +447,14 @@ const GECMIS_MAX = 1000
 const oku = (k, v) => { try { return JSON.parse(localStorage.getItem(k)) ?? v } catch { return v } }
 const kaydet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} }
 // Bizim GIF'lerimiz: uygulamanın içinde gelir (web/gif/ klasörü). Mesajla sadece bu bilgi gider,
-// herkes GIF'i kendi uygulamasındaki kopyadan gösterir; internetten indirilmez.
+// herkes GIF'i kendi uygulamasındaki kopyadan gösterir. Uygulamada olmayan (sonradan eklenmiş)
+// bir GIF gelirse web sitemizden yüklenir; böylece eski sürümler de yeni GIF'leri görür.
 // Yeni GIF eklemek için dosyayı web/gif/'e koyup buraya bir satır eklemek yeter.
+// kod: mesaj kutusuna sadece ":kod:" yazıp gönderince bu GIF gider.
 const MONKE_GIFLER = [
-  {s: 'monke-coin', t: 'Monke', u: 'gif/monke-coin.gif', w: 400, h: 400},
+  {s: 'monke-coin', t: 'Monke', u: 'gif/monke-coin.gif', w: 400, h: 400, kod: 'monke'},
 ]
+const SITE = 'https://yigitfire.github.io/sesapp/'
 
 // Hesap = Trystero'nun cihazda sakladığı kalıcı, şifreli userId. Mesajlar isme değil
 // bu kimliğe bağlı; isim/renk değişince eski mesajlar da yeni isim/renkle görünür.
@@ -654,7 +673,7 @@ async function katil(isim, oda) {
   profilGuncelle(benimId, {isim, renk: benimRenk, foto: profiller[benimId]?.foto, g: Date.now()}, true)
 
   gecmisAnahtari = 'gecmis:' + oda
-  gecmis = oku(gecmisAnahtari, []).filter(gecerliMesaj)
+  gecmis = oku(gecmisAnahtari, []).map(mesajTemizle).filter(gecerliMesaj)
   mesajlariCiz()
   uyeAnahtari = 'uyeler:' + oda
   uyeler = oku(uyeAnahtari, {})
@@ -703,6 +722,7 @@ async function katil(isim, oda) {
     const mesaj = {id: m?.id, u: userId, t: String(m?.t ?? '').slice(0, 2000), z: Number(m?.z)}
     if (m?.g !== undefined) mesaj.g = m.g
     if (m?.r !== undefined) mesaj.r = m.r
+    mesajTemizle(mesaj)
     if (gecerliMesaj(mesaj) && mesajEkle([mesaj])) cal('mesaj')
     // Fotoğrafın kendisi mesajdan önce geldiyse şimdi yerine koy.
     if (mesaj.r && bekleyenResimler.has(mesaj.id)) {
@@ -778,7 +798,7 @@ async function katil(isim, oda) {
         if (id !== benimId && !kisiler.has(id)) profilGuncelle(id, p, false)
       }
     }
-    mesajEkle(veri.m.slice(-GECMIS_MAX).filter(gecerliMesaj))
+    mesajEkle(veri.m.slice(-GECMIS_MAX).map(mesajTemizle).filter(gecerliMesaj))
     // Karşının bildiği son görülmeler: her kişi için en yenisi alınır (gelecek zaman kabul edilmez).
     if (veri.s && typeof veri.s === 'object') {
       const simdi = Date.now()
@@ -816,6 +836,17 @@ async function katil(isim, oda) {
     akislar.set(peerId, {userId, stream})
     sesBagla(userId, stream)
   })
+  // "Ses bağlı" sinyali: seste olanlarla bağlantının gecikmesi 5 saniyede bir ölçülür;
+  // en yavaş bağlantıya göre renk alır, üstüne gelince milisaniye yazar.
+  setInterval(async () => {
+    if (!sesteyim) return
+    const hedefler = new Map()   // userId -> en yeni bağlantısı
+    for (const [peerId, a] of akislar) if (sesteMi(a.userId) && kisiler.has(a.userId)) hedefler.set(a.userId, peerId)
+    const sureler = await Promise.all([...hedefler.values()].map(p => Promise.race([
+      room.ping(p).catch(() => 3000), new Promise(ok => setTimeout(() => ok(3000), 3000))])))
+    sinyalGoster(sureler.length ? Math.max(...sureler) : null)
+  }, 5000)
+
   room.onPeerLeave(({peerId, userId}) => {
     const a = akislar.get(peerId)
     akislar.delete(peerId)
@@ -829,6 +860,15 @@ async function katil(isim, oda) {
   const gonder = () => {
     const t = $('mesaj').value.trim().slice(0, 2000)
     if (!t) return
+    // Sadece ":monke:" gibi bir GIF kodu yazıldıysa yazı değil o GIF gider.
+    const gifKodu = /^:([a-z0-9_-]+):$/.exec(t)?.[1]
+    const bizimGif = gifKodu && MONKE_GIFLER.find(g => g.kod === gifKodu)
+    if (bizimGif) {
+      const {kod, ...gif} = bizimGif
+      gifGonder(gif)
+      $('mesaj').value = ''
+      return
+    }
     const mesaj = {id: crypto.randomUUID(), u: benimId, t, z: Date.now()}
     chat.send({id: mesaj.id, t: mesaj.t, z: mesaj.z})
     mesajEkle([mesaj])
@@ -950,6 +990,13 @@ function mikDugmesi(durum) {
   b.classList.toggle('bekliyor', durum === 'aciliyor')
   b.title = durum === 'aciliyor' ? 'Mikrofon açılıyor...' : durum === 'yok' ? 'Mikrofonu tekrar dene'
     : kapali || sagir ? 'Mikrofonu aç' : 'Mikrofonu kapat'
+}
+
+function sinyalGoster(ms) {
+  const b = $('sesBagli').querySelector('b')
+  b.classList.toggle('orta', ms !== null && ms >= 150 && ms < 300)
+  b.classList.toggle('kotu', ms !== null && ms >= 300)
+  b.title = ms === null ? 'Seste senden başka kimse yok' : 'Gecikme: ' + Math.round(ms) + ' ms'
 }
 
 function kulakDugmesi() {
@@ -1212,8 +1259,18 @@ function gecerliGif(g) {
   return !!g && typeof g === 'object' && typeof g.s === 'string' && g.s.length <= 200 &&
     typeof g.t === 'string' && g.t.length <= 200 &&
     typeof g.u === 'string' && g.u.length <= 500 &&
-    (/^https:\/\/static\d?\.klipy\.com\/[\w\-./]+$/.test(g.u) || MONKE_GIFLER.some(x => x.u === g.u)) &&
+    (/^https:\/\/static\d?\.klipy\.com\/[\w\-./]+$/.test(g.u) || /^gif\/[a-z0-9-]{1,40}\.(gif|webp)$/.test(g.u)) &&
     Number.isInteger(g.w) && Number.isInteger(g.h) && g.w > 0 && g.h > 0 && g.w <= 4000 && g.h <= 4000
+}
+
+// Tanınmayan GIF veya fotoğraf bilgisi yüzünden mesaj kaybolmasın: o kısım atılır,
+// mesaj yazısıyla ("GIF: Monke" gibi) görünür. Eskiden bütün mesaj sessizce atılıyordu.
+function mesajTemizle(m) {
+  if (m && typeof m === 'object') {
+    if (m.g !== undefined && !gecerliGif(m.g)) delete m.g
+    if (m.r !== undefined && (m.g !== undefined || !gecerliResim(m.r))) delete m.r
+  }
+  return m
 }
 
 // Yeni mesajları id'ye göre birleştirir, zamana göre sıralar, son 1000'i saklar.
@@ -1498,18 +1555,146 @@ new ResizeObserver(() => { if (altaYapisik) $('mesajlar').scrollTop = 1e9 }).obs
 // Yazıyı emojileri ayrı (büyük) gösterecek şekilde yerleştirir. Sadece emoji varsa
 // (en çok 27 tane, Discord'daki gibi) hepsi iri görünür. Yazı her zaman textContent ile
 // eklenir, HTML olarak yorumlanmaz.
+// Discord'daki gibi :kod: yazılan emojiler. Gösterirken çevrilir; böylece eski mesajlar da
+// düzgün görünür. :monke: bizim özel emojimiz (logo).
+const EMOJI_KODLARI = Object.fromEntries(`
+grinning 😀 smiley 😃 smile 😄 grin 😁 laughing 😆 sweat_smile 😅 rofl 🤣 joy 😂 slight_smile 🙂 upside_down 🙃
+wink 😉 blush 😊 innocent 😇 smiling_face_with_hearts 🥰 heart_eyes 😍 star_struck 🤩 kissing_heart 😘 yum 😋
+stuck_out_tongue 😛 stuck_out_tongue_winking_eye 😜 zany_face 🤪 money_mouth 🤑 hugging 🤗 hand_over_mouth 🤭
+shushing_face 🤫 thinking 🤔 zipper_mouth 🤐 raised_eyebrow 🤨 neutral_face 😐 expressionless 😑 no_mouth 😶
+smirk 😏 unamused 😒 rolling_eyes 🙄 grimacing 😬 relieved 😌 pensive 😔 sleepy 😪 drooling_face 🤤 sleeping 😴
+mask 😷 nauseated_face 🤢 vomiting 🤮 sneezing_face 🤧 hot_face 🥵 cold_face 🥶 woozy_face 🥴 dizzy_face 😵
+exploding_head 🤯 cowboy 🤠 partying_face 🥳 sunglasses 😎 cool 😎 nerd 🤓 monocle 🧐 confused 😕 worried 😟
+frowning 🙁 open_mouth 😮 astonished 😲 flushed 😳 pleading_face 🥺 fearful 😨 cold_sweat 😰 cry 😢 sob 😭
+scream 😱 confounded 😖 persevere 😣 disappointed 😞 sweat 😓 weary 😩 tired_face 😫 yawning_face 🥱 triumph 😤
+rage 😡 mad 😡 angry 😠 cursing 🤬 smiling_imp 😈 imp 👿 skull 💀 skull_crossbones ☠️ poop 💩 clown 🤡 ghost 👻
+alien 👽 space_invader 👾 robot 🤖 see_no_evil 🙈 hear_no_evil 🙉 speak_no_evil 🙊
+wave 👋 raised_hand ✋ ok_hand 👌 pinched_fingers 🤌 v ✌️ crossed_fingers 🤞 love_you 🤟 metal 🤘 call_me 🤙
+point_left 👈 point_right 👉 point_up 👆 point_down 👇 middle_finger 🖕 thumbsup 👍 +1 👍 thumbsdown 👎 -1 👎
+fist ✊ punch 👊 clap 👏 raised_hands 🙌 open_hands 👐 handshake 🤝 pray 🙏 writing_hand ✍️ nail_care 💅 muscle 💪
+brain 🧠 eyes 👀 eye 👁️ tongue 👅 lips 👄 kiss 💋 baby 👶 older_man 👴 older_woman 👵 raising_hand 🙋 no_good 🙅
+ok_woman 🙆 shrug 🤷 facepalm 🤦 bow 🙇 dancer 💃 man_dancing 🕺 walking 🚶 running 🏃
+heart ❤️ orange_heart 🧡 yellow_heart 💛 green_heart 💚 blue_heart 💙 purple_heart 💜 black_heart 🖤 white_heart 🤍
+brown_heart 🤎 broken_heart 💔 two_hearts 💕 revolving_hearts 💞 heartbeat 💓 heartpulse 💗 sparkling_heart 💖
+cupid 💘 gift_heart 💝 100 💯 anger 💢 boom 💥 dizzy 💫 sweat_drops 💦 dash 💨 speech_balloon 💬 thought_balloon 💭
+zzz 💤 white_check_mark ✅ x ❌ exclamation ❗ question ❓ warning ⚠️ fire 🔥 sparkles ✨ star ⭐ star2 🌟 zap ⚡
+tada 🎉 confetti_ball 🎊 trophy 🏆 first_place 🥇 dart 🎯 flag_tr 🇹🇷
+monkey_face 🐵 monkey 🐒 gorilla 🦍 dog 🐶 cat 🐱 mouse 🐭 hamster 🐹 rabbit 🐰 fox 🦊 bear 🐻 panda 🐼 koala 🐨
+tiger 🐯 lion 🦁 cow 🐮 pig 🐷 frog 🐸 chicken 🐔 penguin 🐧 bird 🐦 duck 🦆 eagle 🦅 owl 🦉 bat 🦇 wolf 🐺 boar 🐗
+horse 🐴 unicorn 🦄 bee 🐝 bug 🐛 butterfly 🦋 snail 🐌 lady_beetle 🐞 turtle 🐢 snake 🐍 lizard 🦎 octopus 🐙
+squid 🦑 crab 🦀 tropical_fish 🐠 fish 🐟 dolphin 🐬 whale 🐳 shark 🦈 crocodile 🐊 elephant 🐘 giraffe 🦒
+camel 🐪 sheep 🐑 goat 🐐 cactus 🌵 evergreen_tree 🌲 palm_tree 🌴 seedling 🌱 four_leaf_clover 🍀 maple_leaf 🍁
+fallen_leaf 🍂 tulip 🌷 rose 🌹 sunflower 🌻 cherry_blossom 🌸 sun_with_face 🌞 full_moon_with_face 🌝
+new_moon_with_face 🌚 crescent_moon 🌙 rainbow 🌈 sunny ☀️ cloud_rain 🌧️ snowman ⛄ snowflake ❄️ ocean 🌊
+green_apple 🍏 apple 🍎 pear 🍐 tangerine 🍊 lemon 🍋 banana 🍌 watermelon 🍉 grapes 🍇 strawberry 🍓 cherries 🍒
+peach 🍑 mango 🥭 pineapple 🍍 coconut 🥥 kiwi 🥝 tomato 🍅 eggplant 🍆 avocado 🥑 broccoli 🥦 hot_pepper 🌶️
+corn 🌽 carrot 🥕 potato 🥔 croissant 🥐 bread 🍞 cheese 🧀 egg 🥚 cooking 🍳 bacon 🥓 poultry_leg 🍗
+meat_on_bone 🍖 hotdog 🌭 hamburger 🍔 fries 🍟 pizza 🍕 sandwich 🥪 taco 🌮 burrito 🌯 stuffed_flatbread 🥙
+spaghetti 🍝 ramen 🍜 stew 🍲 sushi 🍣 bento 🍱 fried_shrimp 🍤 rice 🍚 icecream 🍦 cake 🍰 birthday 🎂
+chocolate_bar 🍫 candy 🍬 lollipop 🍭 doughnut 🍩 cookie 🍪 popcorn 🍿 coffee ☕ tea 🍵 cup_with_straw 🥤
+beverage_box 🧃 beer 🍺 beers 🍻 champagne_glass 🥂 wine_glass 🍷 tumbler_glass 🥃 tropical_drink 🍹
+soccer ⚽ basketball 🏀 football 🏈 baseball ⚾ tennis 🎾 volleyball 🏐 8ball 🎱 ping_pong 🏓 boxing_glove 🥊
+video_game 🎮 joystick 🕹️ game_die 🎲 chess_pawn ♟️ headphones 🎧 microphone 🎤 guitar 🎸 musical_keyboard 🎹
+drum 🥁 clapper 🎬 art 🎨 red_car 🚗 race_car 🏎️ police_car 🚓 ambulance 🚑 fire_engine 🚒 rocket 🚀
+airplane ✈️ helicopter 🚁 sailboat ⛵ house 🏠 castle 🏰 computer 💻 desktop 🖥️ keyboard ⌨️ mouse_three_button 🖱️
+iphone 📱 camera 📷 tv 📺 telephone_receiver 📞 alarm_clock ⏰ bulb 💡 moneybag 💰 money_with_wings 💸 gem 💎
+wrench 🔧 hammer 🔨 gear ⚙️ bomb 💣 knife 🔪 shield 🛡️ key 🔑 gift 🎁 balloon 🎈 pushpin 📌 paperclip 📎
+pencil2 ✏️ memo 📝 books 📚 lock 🔒 bell 🔔 musical_note 🎵 notes 🎶
+`.trim().split(/\s+/).reduce((a, x, i, l) => (i % 2 ? a : a.concat([[x, l[i + 1]]])), []))
+const OZEL_EMOJILER = {monke: 'logo.svg'}
+const KOD = /:([a-z0-9_+-]{1,40}):/g
+
 const EMOJI = /\p{RI}\p{RI}|\p{Extended_Pictographic}(?:\uFE0F|\p{EMod})?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\p{EMod})?)*/gu
 function emojiliYaz(el, yazi) {
-  let son = 0, sayi = 0
-  for (const e of yazi.matchAll(EMOJI)) {
-    if (e.index > son) el.append(yazi.slice(son, e.index))
-    el.append(Object.assign(document.createElement('span'), {className: 'emoji', textContent: e[0]}))
-    son = e.index + e[0].length
+  let sayi = 0, baskaYaziVar = false
+  const emojiKoy = e => {
+    el.append(Object.assign(document.createElement('span'), {className: 'emoji', textContent: e}))
     sayi++
   }
-  if (son < yazi.length) el.append(yazi.slice(son))
-  if (sayi && sayi <= 27 && !yazi.replace(EMOJI, '').trim()) el.classList.add('sadeceEmoji')
+  const yaziKoy = y => { el.append(y); if (y.trim()) baskaYaziVar = true }
+  const duzYaz = parca => {
+    let son = 0
+    for (const e of parca.matchAll(EMOJI)) {
+      if (e.index > son) yaziKoy(parca.slice(son, e.index))
+      emojiKoy(e[0])
+      son = e.index + e[0].length
+    }
+    if (son < parca.length) yaziKoy(parca.slice(son))
+  }
+  let son = 0
+  for (const k of yazi.matchAll(KOD)) {
+    const emoji = EMOJI_KODLARI[k[1]], ozel = OZEL_EMOJILER[k[1]]
+    if (!emoji && !ozel) continue
+    duzYaz(yazi.slice(son, k.index))
+    if (emoji) emojiKoy(emoji)
+    else {
+      el.append(Object.assign(new Image(), {className: 'ozelEmoji', src: ozel, alt: k[0], title: k[0]}))
+      sayi++
+    }
+    son = k.index + k[0].length
+  }
+  duzYaz(yazi.slice(son))
+  if (sayi && sayi <= 27 && !baskaYaziVar) el.classList.add('sadeceEmoji')
 }
+
+// Yazarken ":mo" gibi bir kod başlatınca üstte öneri listesi çıkar (Discord'daki gibi).
+// Yukarı/aşağı ile gezilir, Enter veya Tab ile seçilir, Esc kapatır.
+let oneriler = [], oneriSecili = 0
+function oneriGuncelle() {
+  const k = $('mesaj'), once = k.value.slice(0, k.selectionStart ?? k.value.length)
+  const parca = /(?:^|\s):([a-z0-9_+-]{2,40})$/.exec(once.toLowerCase())?.[1]
+  oneriler = []
+  if (parca) {
+    const hepsi = [...Object.keys(OZEL_EMOJILER), ...Object.keys(EMOJI_KODLARI)]
+    const basla = hepsi.filter(x => x.startsWith(parca)), icinde = hepsi.filter(x => !x.startsWith(parca) && x.includes(parca))
+    oneriler = [...new Set([...basla, ...icinde])].slice(0, 8)
+  }
+  oneriSecili = 0
+  oneriCiz()
+}
+function oneriCiz() {
+  const kutu = $('oneri')
+  kutu.classList.toggle('acik', oneriler.length > 0)
+  kutu.replaceChildren(Object.assign(document.createElement('h4'), {textContent: 'Emoji'}), ...oneriler.map((kod, i) => {
+    const b = document.createElement('button')
+    b.classList.toggle('secili', i === oneriSecili)
+    const simge = OZEL_EMOJILER[kod]
+      ? Object.assign(new Image(), {src: OZEL_EMOJILER[kod], alt: ''})
+      : Object.assign(document.createElement('span'), {className: 'e', textContent: EMOJI_KODLARI[kod]})
+    const ad = Object.assign(document.createElement('span'), {textContent: ':' + kod + ':'})
+    b.append(simge, ad)
+    if (MONKE_GIFLER.some(g => g.kod === kod)) b.append(Object.assign(document.createElement('small'), {textContent: 'tek başına GIF olarak gider'}))
+    b.onpointerdown = e => e.preventDefault()
+    b.onclick = () => oneriSec(i)
+    return b
+  }))
+}
+function oneriSec(i) {
+  const kod = oneriler[i]
+  if (!kod) return
+  const k = $('mesaj'), imlec = k.selectionStart ?? k.value.length
+  const bas = k.value.slice(0, imlec).lastIndexOf(':')
+  const ek = ':' + kod + ': '
+  k.value = k.value.slice(0, bas) + ek + k.value.slice(imlec)
+  k.focus()
+  k.setSelectionRange(bas + ek.length, bas + ek.length)
+  oneriler = []
+  oneriCiz()
+}
+$('mesaj').addEventListener('input', oneriGuncelle)
+$('mesaj').addEventListener('blur', () => setTimeout(() => { oneriler = []; oneriCiz() }, 150))
+// Belge düzeyinde, yakalama aşamasında: öneri açıkken Enter mesajı göndermesin, seçsin.
+document.addEventListener('keydown', e => {
+  if (!oneriler.length || e.target !== $('mesaj')) return
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    oneriSecili = (oneriSecili + (e.key === 'ArrowDown' ? 1 : oneriler.length - 1)) % oneriler.length
+    oneriCiz()
+  } else if (e.key === 'Enter' || e.key === 'Tab') oneriSec(oneriSecili)
+  else if (e.key === 'Escape') { oneriler = []; oneriCiz() }
+  else return
+  e.preventDefault()
+  e.stopPropagation()
+}, true)
 
 // ---- Sohbette fotoğraf ----
 // Sunucu yok: fotoğraf doğrudan odadakilere gider ve her bilgisayarda ayrı bir depoda
@@ -1703,6 +1888,8 @@ function gifResmi(m) {
     img.className = 'gif'
     img.alt = m.g.t || 'GIF'
     img.onload = () => img.classList.add('yuklendi')
+    // Bizim GIF'imiz bu sürümde yoksa web sitesinden yüklenir.
+    img.onerror = () => { if (m.g.u.startsWith('gif/') && !img.src.startsWith(SITE)) img.src = SITE + m.g.u }
     img.src = m.g.u
     gifResimleri.set(m.id, img)
   }
@@ -1757,13 +1944,16 @@ const EMOJILER = [
 function emojiPaneliAc() {
   const iz = $('emojiIzgara'), son = oku('sonEmojiler', [])
   iz.replaceChildren()
-  for (const [ad, liste] of [...(son.length ? [['Son kullanılanlar', son]] : []), ...EMOJILER]) {
+  const ozeller = Object.keys(OZEL_EMOJILER).map(k => ':' + k + ':')
+  for (const [ad, liste] of [...(son.length ? [['Son kullanılanlar', son]] : []), ['Monke', ozeller], ...EMOJILER]) {
     const h = document.createElement('h4')
     h.textContent = ad
     iz.append(h)
     for (const e of liste) {
       const b = document.createElement('button')
-      b.textContent = e
+      const ozel = OZEL_EMOJILER[e.slice(1, -1)]
+      if (ozel) { b.append(Object.assign(new Image(), {src: ozel, alt: e})); b.title = e }
+      else b.textContent = e
       b.onpointerdown = ev => ev.preventDefault()  // yazı kutusu odağını kaybetmesin
       b.onclick = () => emojiKoy(e)
       iz.append(b)
@@ -1855,7 +2045,7 @@ function gifBilgisi(o) {
 function monkeGifleriEkle() {
   const baslik = ad => Object.assign(document.createElement('div'), {className: 'gifBaslik', textContent: ad})
   $('gifIzgara').insertBefore(baslik('Monke'), $('gifDurum'))
-  for (const g of MONKE_GIFLER) {
+  for (const {kod, ...g} of MONKE_GIFLER) {
     const b = document.createElement('button')
     b.title = g.t
     const img = new Image()

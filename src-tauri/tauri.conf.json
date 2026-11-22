@@ -24,7 +24,7 @@
         "script-src": "'self'",
         "style-src": "'self' 'unsafe-inline'",
         "connect-src": "'self' ipc: http://ipc.localhost wss: https://api.klipy.com",
-        "img-src": "'self' data: blob: https://static.klipy.com https://static1.klipy.com https://static2.klipy.com",
+        "img-src": "'self' data: blob: https://yigitfire.github.io https://static.klipy.com https://static1.klipy.com https://static2.klipy.com",
         "media-src": "'self' blob: mediastream:",
         "worker-src": "'self' blob:"
       }
