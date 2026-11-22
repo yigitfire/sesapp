@@ -152,24 +152,93 @@ const KONSOL_BETIGI: &str = r#"
 })();
 "#;
 
+/// Güncelleme denemeleri arasındaki bekleme (saniye): açılışta hemen, olmazsa 15 sn,
+/// 1 dk ve 5 dk sonra. Mac'te yeni sürümün ilk açılışında tek kontrol bazen başarısız
+/// oluyor (internet henüz hazır değil ya da sistem yeni uygulamayı tarıyor), ikinci
+/// açılışta çalışıyordu. 5 dakikadan sonra denenmez ki oyun ortasında yeniden başlamasın.
+const GUNCELLEME_BEKLEMELERI: [u64; 4] = [0, 15, 60, 300];
+
 /// Açılışta GitHub'daki latest.json'a bakar; yeni sürüm varsa indirir, imzasını
 /// (bizim gizli anahtarımızla imzalanmış mı) doğrular, kurar ve uygulamayı yeniden başlatır.
 /// Windows'ta kurulum dosyası "passive" modda çalışır (sadece ilerleme çubuğu).
+/// Her denemenin sonucu guncelleme.log'a yazılır (sorun olursa sebebi görülsün).
 /// Geliştirme sürümünde çalışmaz, yoksa test sırasında kendini güncellerdi.
-async fn guncelle(app: tauri::AppHandle) -> tauri_plugin_updater::Result<()> {
+fn guncelleme_dongusu(app: tauri::AppHandle) {
+    if cfg!(debug_assertions) {
+        return;
+    }
+    let yer = std::env::current_exe().map(|y| y.display().to_string()).unwrap_or_default();
+    guncelleme_kaydi(&app, &format!("açıldı ({yer})"));
+    for (no, bekle) in GUNCELLEME_BEKLEMELERI.iter().enumerate() {
+        thread::sleep(std::time::Duration::from_secs(*bekle));
+        match tauri::async_runtime::block_on(guncelle(&app)) {
+            Ok(Some(yeni)) => {
+                guncelleme_kaydi(&app, &format!("{yeni} kuruldu, yeniden başlatılıyor"));
+                app.restart();
+            }
+            Ok(None) => {
+                guncelleme_kaydi(&app, "güncel");
+                return;
+            }
+            Err(e) => guncelleme_kaydi(&app, &format!("deneme {}: {e}", no + 1)),
+        }
+    }
+}
+
+/// Yeni sürüm varsa indirip kurar ve sürüm numarasını döner; yoksa None.
+async fn guncelle(app: &tauri::AppHandle) -> tauri_plugin_updater::Result<Option<String>> {
     use tauri::Emitter;
     use tauri_plugin_updater::UpdaterExt;
 
-    if cfg!(debug_assertions) {
-        return Ok(());
+    let Some(surum) = app.updater()?.check().await? else {
+        return Ok(None);
+    };
+    guncelleme_kaydi(app, &format!("{} bulundu, indiriliyor", surum.version));
+    // Arayüz "güncelleniyor" yazsın; kişi neden yeniden başladığını anlasın.
+    let _ = app.emit("guncelleme", surum.version.clone());
+    surum.download_and_install(|_, _| {}, || {}).await?;
+    Ok(Some(surum.version))
+}
+
+/// Güncelleme günlüğü: Mac'te ~/Library/Logs/io.github.yigitfire.sesapp/guncelleme.log,
+/// Windows'ta %LOCALAPPDATA%\io.github.yigitfire.sesapp\logs\guncelleme.log.
+/// 100 KB'ı geçince baştan başlar. Kişisel bilgi yazılmaz.
+fn guncelleme_kaydi(app: &tauri::AppHandle, satir: &str) {
+    use std::io::Write;
+    use tauri::Manager;
+
+    let surum = &app.package_info().version;
+    eprintln!("Güncelleme: {satir}");
+    let Ok(klasor) = app.path().app_log_dir() else {
+        return;
+    };
+    let _ = std::fs::create_dir_all(&klasor);
+    let yol = klasor.join("guncelleme.log");
+    if std::fs::metadata(&yol).is_ok_and(|m| m.len() > 100_000) {
+        let _ = std::fs::remove_file(&yol);
     }
-    if let Some(surum) = app.updater()?.check().await? {
-        // Arayüz "güncelleniyor" yazsın; kişi neden yeniden başladığını anlasın.
-        let _ = app.emit("guncelleme", surum.version.clone());
-        surum.download_and_install(|_, _| {}, || {}).await?;
-        app.restart();
+    if let Ok(mut dosya) = std::fs::OpenOptions::new().create(true).append(true).open(&yol) {
+        let _ = writeln!(dosya, "{} UTC  v{surum}  {satir}", utc_zaman());
     }
-    Ok(())
+}
+
+/// Şu anki UTC zamanı "2026-11-22 14:05:09" biçiminde (tarih kütüphanesi eklememek için elle).
+fn utc_zaman() -> String {
+    let sn = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64);
+    let (gun, kalan) = (sn.div_euclid(86_400), sn.rem_euclid(86_400));
+    // Günden takvim tarihine (Howard Hinnant'ın civil_from_days algoritması).
+    let z = gun + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = yoe + era * 400 + i64::from(m <= 2);
+    format!("{y:04}-{m:02}-{d:02} {:02}:{:02}:{:02}", kalan / 3600, kalan % 3600 / 60, kalan % 60)
 }
 
 pub fn calistir() {
@@ -177,12 +246,9 @@ pub fn calistir() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let app = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                // İnternet yoksa veya GitHub'a ulaşılamazsa sessizce geçilir; uygulama çalışmaya devam eder.
-                if let Err(e) = guncelle(app).await {
-                    eprintln!("Güncelleme kontrolü başarısız: {e}");
-                }
-            });
+            // Ayrı thread: denemeler arasında beklerken uygulamayı tutmaz. İnternet yoksa veya
+            // GitHub'a ulaşılamazsa uygulama çalışmaya devam eder.
+            thread::spawn(move || guncelleme_dongusu(app));
             Ok(())
         });
     #[cfg(debug_assertions)]
