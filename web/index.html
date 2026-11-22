@@ -208,6 +208,8 @@
                       font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}
   #emojiIzgara button:hover{background:var(--bg4)}
   .msj img.gif{display:block;max-width:100%;height:auto;margin:4px 0 2px;border-radius:8px;background:var(--bg3)}
+  /* Gri zemin sadece yüklenirken yer tutar; yüklenince kalkar (şeffaf GIF'ler kutu içinde görünmesin). */
+  .msj img.gif.yuklendi{background:none}
   #mesajlar{flex:1;overflow:auto;padding:16px 20px 8px;user-select:text;-webkit-user-select:text}
   /* Mesajlar: grubun ilk mesajında solda kişinin yuvarlağı, devamı aynı hizada. */
   .msj{position:relative;padding:1px 0 1px 46px;overflow-wrap:anywhere}
@@ -1397,6 +1399,7 @@ function gifResmi(m) {
     img = new Image(Math.round(m.g.w * olcek), Math.round(m.g.h * olcek))
     img.className = 'gif'
     img.alt = m.g.t || 'GIF'
+    img.onload = () => img.classList.add('yuklendi')
     img.src = m.g.u
     gifResimleri.set(m.id, img)
   }
