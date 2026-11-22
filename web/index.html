@@ -107,7 +107,21 @@
   #ben .ib{width:30px}
 
   /* Sağ: sohbet */
-  #sag{flex:1;min-width:0;display:flex;flex-direction:column}
+  #sag{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
+
+  /* GIF paneli (Klipy). Sonuçlar Klipy'nin verdiği sırayla, soldan sağa ızgarada. */
+  #gifPanel{display:none;position:absolute;right:16px;bottom:72px;z-index:3;width:min(420px,calc(100% - 32px));height:380px;
+            flex-direction:column;gap:8px;padding:10px;border-radius:12px;background:var(--bg2);box-shadow:0 12px 32px #0007}
+  #gifPanel.acik{display:flex}
+  #gifAra{width:100%}
+  #gifIzgara{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:110px;gap:6px;align-content:start}
+  #gifIzgara button{padding:0;border-radius:6px;overflow:hidden;background:var(--bg3)}
+  #gifIzgara img{width:100%;height:100%;object-fit:cover;display:block}
+  #gifIzgara button:hover{outline:2px solid var(--yazi)}
+  #gifDurum{grid-column:1/-1;padding:20px 0;text-align:center;font-size:13px;color:var(--soluk)}
+  #gifDurum:empty{display:none}
+  #gifPanel .klipy{font-size:11px;text-align:right;color:var(--soluk)}
+  .msj img.gif{display:block;max-width:100%;height:auto;margin:4px 0 2px;border-radius:8px;background:var(--bg3)}
   #mesajlar{flex:1;overflow:auto;padding:16px 20px 8px;user-select:text;-webkit-user-select:text}
   /* Mesajlar: grubun ilk mesajında solda kişinin yuvarlağı, devamı aynı hizada. */
   .msj{position:relative;padding:1px 0 1px 46px;overflow-wrap:anywhere}
@@ -167,6 +181,7 @@
   <symbol id="i-mik-yok" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"/><path d="M5 10v2a7 7 0 0 0 12 5"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/><path d="M12 19v3"/></symbol>
   <symbol id="i-hop" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.4 18.4a9 9 0 0 0 0-12.8"/></symbol>
   <symbol id="i-hop-yok" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></symbol>
+  <symbol id="i-gif" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><text x="12" y="15.2" text-anchor="middle" font-size="7.5" font-weight="700" font-family="Noto Sans, sans-serif" fill="currentColor" stroke="none">GIF</text></symbol>
   <symbol id="i-gonder" viewBox="0 0 24 24"><path d="M14.5 21.7a.5.5 0 0 0 .9 0l6.5-19a.5.5 0 0 0-.6-.6l-19 6.5a.5.5 0 0 0 0 .9l7.9 3.2a2 2 0 0 1 1.1 1.1z"/><path d="m21.9 2.1-11 11"/></symbol>
   <symbol id="i-cik" viewBox="0 0 24 24"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></symbol>
   <symbol id="i-ayar" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
@@ -214,7 +229,13 @@
     <div id="mesajlar"></div>
     <div id="yaz">
       <input id="mesaj" placeholder="Mesaj yaz">
+      <button class="ib" id="gifAc" title="GIF"><svg class="i"><use href="#i-gif"/></svg></button>
       <button class="ib" id="gonder" title="Gönder"><svg class="i"><use href="#i-gonder"/></svg></button>
+    </div>
+    <div id="gifPanel">
+      <input id="gifAra" placeholder="Search KLIPY" maxlength="50">
+      <div id="gifIzgara"><div id="gifDurum"></div></div>
+      <div class="klipy">Powered by KLIPY</div>
     </div>
   </div>
 </div>
@@ -478,6 +499,7 @@ async function katil(isim, oda) {
     // Eski sürüm düz metin yollar; onu da kabul et.
     if (typeof m === 'string') m = {id: crypto.randomUUID(), t: m, z: Date.now()}
     const mesaj = {id: m?.id, u: userId, t: String(m?.t ?? '').slice(0, 2000), z: Number(m?.z)}
+    if (m?.g !== undefined) mesaj.g = m.g
     if (gecerliMesaj(mesaj) && mesajEkle([mesaj])) cal('mesaj')
   })
 
@@ -519,6 +541,13 @@ async function katil(isim, oda) {
   }
   $('gonder').onclick = gonder
   $('mesaj').onkeydown = e => { if (e.key === 'Enter') gonder() }
+
+  // GIF gönderme. Eski sürümler "g" alanını bilmez; onlara t ("GIF: başlık") yazı olarak görünür.
+  gifGonder = gif => {
+    const mesaj = {id: crypto.randomUUID(), u: benimId, t: ('GIF: ' + gif.t).slice(0, 200), z: Date.now(), g: gif}
+    chat.send({id: mesaj.id, t: mesaj.t, z: mesaj.z, g: gif})
+    mesajEkle([mesaj])
+  }
 
   // İsim değiştirme: kutudan çıkınca veya Enter'a basınca kaydedilir ve herkese yayılır.
   $('benIsim').value = isim
@@ -722,7 +751,17 @@ function profilGuncelle(id, p, kesin) {
 function gecerliMesaj(m) {
   return m && typeof m.id === 'string' && m.id.length <= 64 &&
     typeof m.u === 'string' && m.u.length <= 200 &&
-    typeof m.t === 'string' && m.t.length > 0 && Number.isFinite(m.z)
+    typeof m.t === 'string' && m.t.length > 0 && Number.isFinite(m.z) &&
+    (m.g === undefined || gecerliGif(m.g))
+}
+
+// GIF bilgisi başkasından geldiği için sıkı kontrol: sadece Klipy'nin medya sunucularından
+// bir adres kabul edilir (başka sitelerden resim yüklenip IP adresi sızdırılamasın).
+function gecerliGif(g) {
+  return !!g && typeof g === 'object' && typeof g.s === 'string' && g.s.length <= 200 &&
+    typeof g.t === 'string' && g.t.length <= 200 &&
+    typeof g.u === 'string' && g.u.length <= 500 && /^https:\/\/static\d?\.klipy\.com\/[\w\-./]+$/.test(g.u) &&
+    Number.isInteger(g.w) && Number.isInteger(g.h) && g.w > 0 && g.h > 0 && g.w <= 4000 && g.h <= 4000
 }
 
 // Yeni mesajları id'ye göre birleştirir, zamana göre sıralar, son 1000'i saklar.
@@ -899,11 +938,143 @@ function mesajlariCiz() {
       d.append(kim)
     }
     const t = document.createElement('div')
-    t.textContent = m.t
+    if (m.g) t.append(gifResmi(m))
+    else t.textContent = m.t
     d.append(t)
     return d
   }))
   if (alttaydi) kutu.scrollTop = 1e9
+}
+
+// Mesajdaki GIF. Aynı mesajın resmi tekrar kullanılır; yoksa her yeni mesajda bütün
+// GIF'ler baştan yüklenip başa sarardı. Boyut önceden verilir ki yüklenirken sayfa zıplamasın.
+const gifResimleri = new Map()
+function gifResmi(m) {
+  let img = gifResimleri.get(m.id)
+  if (!img) {
+    const olcek = Math.min(1, 260 / m.g.w, 220 / m.g.h)
+    img = new Image(Math.round(m.g.w * olcek), Math.round(m.g.h * olcek))
+    img.className = 'gif'
+    img.alt = m.g.t || 'GIF'
+    img.src = m.g.u
+    gifResimleri.set(m.id, img)
+  }
+  return img
+}
+
+// ---- GIF paneli (Klipy) ----
+// Klipy kuralları: istekler doğrudan kullanıcının cihazından gider, medya Klipy'nin
+// adreslerinden olduğu gibi yüklenir (kopyalanmaz), sonuçların sırası değiştirilmez,
+// arama kutusunda "Search KLIPY" yazar. Anahtar test modunda: saatte 100 istek (herkes için ortak).
+const KLIPY = 'https://api.klipy.com/api/v1/5PuDXrUgZSbgNmaUuKsTrnopNBqYJo6E77OIenXQpfM9uq5R8Mrkrd0clZddigWV/gifs'
+// Klipy'nin istediği sabit kullanıcı numarası: kişisel bilgi değil, cihaza özel rastgele bir değer.
+const klipyId = (() => {
+  let id = oku('klipyId', '')
+  if (!id) { id = crypto.randomUUID(); kaydet('klipyId', id) }
+  return id
+})()
+let gifGonder = () => {}           // odaya girince tanımlanır
+let gifSorgu = '', gifSayfa = 0, gifDahaVar = false, gifYukleniyor = false, gifIstekNo = 0, gifZamanlayici
+let populer = null                  // popüler GIF'ler 10 dk saklanır (istek hakkı boşa gitmesin)
+
+function gifPaneliAc() {
+  $('gifPanel').classList.add('acik')
+  $('gifAra').value = ''
+  $('gifAra').focus()
+  gifListele('')
+}
+const gifPaneliKapat = () => $('gifPanel').classList.remove('acik')
+$('gifAc').onclick = e => {
+  e.stopPropagation()
+  $('gifPanel').classList.contains('acik') ? gifPaneliKapat() : gifPaneliAc()
+}
+document.addEventListener('pointerdown', e => {
+  if (!$('gifPanel').contains(e.target) && !$('gifAc').contains(e.target)) gifPaneliKapat()
+})
+document.addEventListener('keydown', e => { if (e.key === 'Escape') gifPaneliKapat() })
+// Her harfte değil, yazmayı bırakınca ara (istek hakkı hızlı bitmesin).
+$('gifAra').oninput = () => {
+  clearTimeout(gifZamanlayici)
+  gifZamanlayici = setTimeout(() => gifListele($('gifAra').value.trim()), 500)
+}
+// Aşağı inince sonraki sayfa.
+$('gifIzgara').onscroll = () => {
+  const iz = $('gifIzgara')
+  if (gifDahaVar && !gifYukleniyor && iz.scrollTop + iz.clientHeight > iz.scrollHeight - 150) gifSayfaGetir()
+}
+
+function gifListele(sorgu) {
+  gifSorgu = sorgu
+  gifSayfa = 0
+  gifDahaVar = true
+  $('gifIzgara').replaceChildren($('gifDurum'))
+  if (!sorgu && populer && Date.now() - populer.z < 10 * 60e3) {
+    gifSayfa = 1
+    gifDahaVar = populer.dahaVar
+    gifEkle(populer.liste)
+    return
+  }
+  gifSayfaGetir()
+}
+
+async function gifSayfaGetir() {
+  const no = ++gifIstekNo, sorgu = gifSorgu, sayfa = gifSayfa + 1
+  gifYukleniyor = true
+  $('gifDurum').textContent = 'Yükleniyor...'
+  const p = new URLSearchParams({page: sayfa, per_page: 24, customer_id: klipyId, locale: 'tr', content_filter: 'medium'})
+  if (sorgu) p.set('q', sorgu)
+  try {
+    const c = await fetch(`${KLIPY}/${sorgu ? 'search' : 'trending'}?${p}`)
+    if (no !== gifIstekNo) return  // bu arada yeni arama başladı
+    if (c.status === 429) throw new Error('sinir')
+    const veri = await c.json()
+    if (no !== gifIstekNo) return
+    const liste = (veri?.data?.data || []).map(gifBilgisi).filter(Boolean)
+    gifSayfa = sayfa
+    gifDahaVar = !!veri?.data?.has_next
+    if (!sorgu && sayfa === 1) populer = {liste, dahaVar: gifDahaVar, z: Date.now()}
+    $('gifDurum').textContent = gifSayfa === 1 && !liste.length ? 'Sonuç yok' : ''
+    gifEkle(liste)
+  } catch (e) {
+    if (no !== gifIstekNo) return
+    gifDahaVar = false
+    $('gifDurum').textContent = e.message === 'sinir'
+      ? 'GIF arama sınırı doldu, biraz sonra tekrar dene' : 'GIF\'ler yüklenemedi'
+  } finally {
+    if (no === gifIstekNo) gifYukleniyor = false
+  }
+}
+
+// Klipy sonucundan gereken kısmı çıkarır: önizleme (küçük) ve mesajda gösterilecek (orta) adres.
+function gifBilgisi(o) {
+  const f = o?.file
+  const orta = f?.md?.webp || f?.md?.gif, kucuk = f?.sm?.webp || f?.sm?.gif || orta
+  if (!orta || !kucuk) return null
+  const g = {s: String(o.slug || ''), t: String(o.title || 'GIF').slice(0, 200), u: orta.url, w: orta.width, h: orta.height}
+  return gecerliGif(g) ? {g, onizleme: kucuk.url} : null
+}
+
+function gifEkle(liste) {
+  const sorgu = gifSorgu
+  for (const {g, onizleme} of liste) {
+    const b = document.createElement('button')
+    b.title = g.t
+    const img = new Image()
+    img.loading = 'lazy'
+    img.alt = g.t
+    img.src = onizleme
+    b.append(img)
+    b.onclick = () => {
+      gifGonder(g)
+      gifPaneliKapat()
+      // Klipy'ye "paylaşıldı" bilgisi (kişisel veri yok, sadece cihaz numarası ve arama kelimesi).
+      fetch(`${KLIPY}/share/${encodeURIComponent(g.s)}`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({customer_id: klipyId, q: sorgu}),
+      }).catch(() => {})
+    }
+    $('gifIzgara').insertBefore(b, $('gifDurum'))
+  }
 }
 </script>
 </body>
