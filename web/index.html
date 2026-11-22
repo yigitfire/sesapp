@@ -204,12 +204,24 @@
   #emojiPanel.acik{display:flex}
   #emojiIzgara{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(8,1fr);align-content:start}
   #emojiIzgara h4{grid-column:1/-1;margin:8px 4px 4px;font-size:11px;font-weight:600;color:var(--soluk)}
-  #emojiIzgara button{font-size:22px;line-height:1;padding:5px 0;border-radius:6px;
+  #emojiIzgara button{font-size:24px;line-height:1;padding:5px 0;border-radius:6px;
                       font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}
   #emojiIzgara button:hover{background:var(--bg4)}
   .msj img.gif{display:block;max-width:100%;height:auto;margin:4px 0 2px;border-radius:8px;background:var(--bg3)}
   /* Gri zemin sadece yüklenirken yer tutar; yüklenince kalkar (şeffaf GIF'ler kutu içinde görünmesin). */
   .msj img.gif.yuklendi{background:none}
+  /* Sohbette gönderilen fotoğraf: küçük görünür, tıklayınca büyür. Gelene kadar gri kutu. */
+  .msj img.resim{display:block;max-width:100%;height:auto;margin:4px 0 2px;border-radius:8px;background:var(--bg3);cursor:zoom-in}
+  .msj img.resim.yuklendi{background:none}
+  #buyukFoto.resimModu img{width:auto;height:auto;max-width:92vw;max-height:84vh;aspect-ratio:auto;border-radius:8px}
+  /* Dosya sohbetin üstüne sürüklenince çıkan çerçeve. */
+  #surukle{display:none;position:absolute;inset:8px;z-index:4;border:2px dashed var(--vurgu);border-radius:12px;
+           background:color-mix(in srgb,var(--bg) 85%,transparent);align-items:center;justify-content:center;
+           font-weight:600;color:var(--vurgu);pointer-events:none}
+  #surukle.acik{display:flex}
+  #sohbetUyari{margin:0 16px 6px;font-size:12px;color:var(--kirmizi)}
+  #sohbetUyari:empty{display:none}
+  #yaz #resimAc{margin-left:4px}
   #mesajlar{flex:1;overflow:auto;padding:16px 20px 8px;user-select:text;-webkit-user-select:text}
   /* Mesajlar: grubun ilk mesajında solda kişinin yuvarlağı, devamı aynı hizada. */
   .msj{position:relative;padding:1px 0 1px 46px;overflow-wrap:anywhere}
@@ -219,6 +231,11 @@
   .msj .kim{display:flex;align-items:baseline;gap:8px}
   .msj .kim b{font-weight:600}
   .msj time{font-size:11px;color:var(--soluk)}
+  /* Mesajdaki emojiler yazıdan biraz büyük; sadece emojiden oluşan mesajda (Discord'daki gibi) iri. */
+  .msj .emoji{font-size:1.4em;line-height:1;vertical-align:-.12em;margin:0 1px;
+              font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}
+  .msj .sadeceEmoji{line-height:1.25}
+  .msj .sadeceEmoji .emoji{font-size:2.6em}
   #yaz{display:flex;align-items:center;margin:0 16px 16px;padding-right:4px;border-radius:10px;background:var(--bg3)}
   #yaz input{flex:1;padding:12px 14px;background:transparent;border:0}
   #sesUyari{display:none;margin:12px 16px 0;padding:8px 12px;border-radius:8px;background:#2a2410;color:#f5d047;font-size:13px;cursor:pointer}
@@ -282,10 +299,11 @@
   <symbol id="i-cik" viewBox="0 0 24 24"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></symbol>
   <symbol id="i-ayar" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
-  <symbol id="i-kapat" viewBox="0 0 24 24"><path transform="rotate(135 12 12)" d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
+  <symbol id="i-kapat" viewBox="0 0 24 24"><path transform="translate(12 12) rotate(135) scale(.7) translate(-12 -12)" stroke-width="2.86" d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></symbol>
   <symbol id="i-kulaklik" viewBox="0 0 24 24"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></symbol>
   <symbol id="i-kulaklik-yok" viewBox="0 0 24 24"><path d="M21 14h-1.3"/><path d="M9.1 3.5A9 9 0 0 1 21 12v3.3"/><path d="m2 2 20 20"/><path d="M20.4 20.4A2 2 0 0 1 19 21h-1a2 2 0 0 1-2-2v-3"/><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 2.6-6.4"/></symbol>
   <symbol id="i-asagi" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-resim" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
   <symbol id="i-sag" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
   <symbol id="i-sinyal" viewBox="0 0 24 24"><path d="M2 20h.01"/><path d="M7 20v-4"/><path d="M12 20v-8"/><path d="M17 20V8"/><path d="M22 4v16"/></symbol>
 </svg>
@@ -351,7 +369,11 @@
   <div id="sag">
     <div id="sesUyari">Sesi açmak için tıkla</div>
     <div id="mesajlar"></div>
+    <div id="surukle">Fotoğrafı bırak, gönderelim</div>
+    <div id="sohbetUyari"></div>
     <div id="yaz">
+      <button class="ib" id="resimAc" title="Fotoğraf gönder"><svg class="i"><use href="#i-resim"/></svg></button>
+      <input type="file" id="resimDosya" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
       <input id="mesaj" placeholder="Mesaj yaz">
       <button class="ib" id="emojiAc" title="Emoji"><svg class="i"><use href="#i-emoji"/></svg></button>
       <button class="ib" id="gifAc" title="GIF"><svg class="i"><use href="#i-gif"/></svg></button>
@@ -680,8 +702,69 @@ async function katil(isim, oda) {
     if (typeof m === 'string') m = {id: crypto.randomUUID(), t: m, z: Date.now()}
     const mesaj = {id: m?.id, u: userId, t: String(m?.t ?? '').slice(0, 2000), z: Number(m?.z)}
     if (m?.g !== undefined) mesaj.g = m.g
+    if (m?.r !== undefined) mesaj.r = m.r
     if (gecerliMesaj(mesaj) && mesajEkle([mesaj])) cal('mesaj')
+    // Fotoğrafın kendisi mesajdan önce geldiyse şimdi yerine koy.
+    if (mesaj.r && bekleyenResimler.has(mesaj.id)) {
+      const veri = bekleyenResimler.get(mesaj.id)
+      bekleyenResimler.delete(mesaj.id)
+      resimDogrulaKoy(mesaj.id, veri)
+    }
   })
+
+  // Fotoğraflar: mesaj (boyut, tür, özet) sohbetle gider; fotoğrafın kendisi ayrı bir
+  // kanalla, ikili veri olarak. Özet (SHA-256) mesajın içinde, mesaj da gönderenin doğrulanmış
+  // kimliğiyle geldiği için kimse başkasının fotoğrafını değiştiremez: gelen verinin özeti
+  // tutmazsa atılır. Elinde olmayan fotoğrafı (kapalıyken atılmış) odadakilerden ister.
+  const resimKanali = room.makeAction('resim')
+  const resimIstegi = room.makeAction('resimIste')
+  const bekleyenResimler = new Map()   // mesajı henüz gelmemiş fotoğraflar: id -> veri
+  async function resimDogrulaKoy(id, veri) {
+    const m = gecmis.find(x => x.id === id && x.r)
+    if (!m) {
+      // Mesajı birkaç saniye içinde gelir; en çok 10 tanesi 1 dakika bekletilir.
+      if (bekleyenResimler.size < 10) {
+        bekleyenResimler.set(id, veri)
+        setTimeout(() => bekleyenResimler.delete(id), 60e3)
+      }
+      return
+    }
+    if (veri.byteLength !== m.r.b || await ozetAl(veri) !== m.r.ozet) return
+    resimGeldi(m, veri)
+  }
+  resimKanali.onMessage(async (veri, {metadata}) => {
+    const id = metadata?.id
+    if (typeof id !== 'string' || id.length > 64) return
+    if (veri instanceof Blob) veri = await veri.arrayBuffer()
+    else if (ArrayBuffer.isView(veri)) veri = veri.buffer.slice(veri.byteOffset, veri.byteOffset + veri.byteLength)
+    if (!(veri instanceof ArrayBuffer) || veri.byteLength > RESIM_MAX) return
+    if (eksikResimler.has(id) || !resimler.get(id)?.src) resimDogrulaKoy(id, veri)
+  })
+  resimIstegi.onMessage(async (v, {peerId}) => {
+    const id = v?.id
+    if (typeof id !== 'string' || !gecmis.some(x => x.id === id && x.r)) return
+    const kayit = await resimKaydi(id)
+    if (kayit) resimKanali.send(kayit.veri, {target: peerId, metadata: {id}}).catch(() => {})
+  })
+  const istenenler = new Map()   // id -> son istek zamanı (aynı fotoğraf 30 sn'de bir istenir)
+  resimIste = (id, hedef) => {
+    if (!hedef) {
+      if (Date.now() - (istenenler.get(id) || 0) < 30e3) return
+      istenenler.set(id, Date.now())
+    }
+    resimIstegi.send({id}, hedef ? {target: hedef} : undefined).catch(() => {})
+  }
+  resimGonder = async dosya => {
+    const {veri, tip, w, h} = await resimHazirla(dosya)
+    const id = crypto.randomUUID()
+    const r = {tip, w, h, b: veri.byteLength, ozet: await ozetAl(veri)}
+    const mesaj = {id, u: benimId, t: '📷 Fotoğraf', z: Date.now(), r}
+    await resimSakla(id, veri, tip)
+    mesajEkle([mesaj])
+    // Önce mesaj, sonra fotoğraf: karşı taraf fotoğrafı neyle karşılaştıracağını bilsin.
+    await chat.send({id, t: mesaj.t, z: mesaj.z, r}).catch(() => {})
+    resimKanali.send(veri, {metadata: {id}}).catch(() => {})
+  }
 
   // Geçmiş eşitleme: biri girince iki taraf da elindeki geçmişi ve bildiği profilleri
   // karşıya yollar; eksikler id'ye göre birleştirilir. Böylece kapalıyken yazılanlar,
@@ -717,6 +800,7 @@ async function katil(isim, oda) {
     room.addStream(gidenSes, {target: peerId}).catch(() => {})
     gorundu(benimId)
     esitle.send({m: gecmis, p: profiller, s: uyeler}, {target: peerId}).catch(() => {})
+    for (const id of [...eksikResimler].slice(-30)) resimIste(id, peerId)
   })
   room.onUserLeave(({userId}) => {
     if (seste.get(userId) === true) cal('cikis')
@@ -1049,11 +1133,22 @@ function avatarCiz(el, id) {
 // Kişi listesindeki veya mesajlardaki fotoğraflı yuvarlağa tıklayınca fotoğraf büyür.
 // (Kendi kartındaki yuvarlak renk seçimi için; ona dokunulmaz.)
 document.addEventListener('click', e => {
+  // Sohbetteki fotoğraf: tam boyutta açılır, altında gönderen ve saat.
+  const resim = e.target.closest?.('#mesajlar img.resim')
+  if (resim?.src) {
+    const m = gecmis.find(x => x.id === resim.dataset.id)
+    $('buyukFoto').querySelector('img').src = resim.src
+    $('buyukFoto').querySelector('div').textContent = m ? isimAl(m.u) + ' · ' +
+      new Date(m.z).toLocaleString('tr-TR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}) : ''
+    $('buyukFoto').classList.add('acik', 'resimModu')
+    return
+  }
   const av = e.target.closest?.('#kisiler .av.fotolu, #mesajlar .av.fotolu, #uyeler .av.fotolu')
   const foto = av && profiller[av.dataset.id]?.foto
   if (!foto) return
   $('buyukFoto').querySelector('img').src = foto
   $('buyukFoto').querySelector('div').textContent = isimAl(av.dataset.id)
+  $('buyukFoto').classList.remove('resimModu')
   $('buyukFoto').classList.add('acik')
 })
 const buyukFotoKapat = () => $('buyukFoto').classList.remove('acik')
@@ -1106,7 +1201,8 @@ function gecerliMesaj(m) {
   return m && typeof m.id === 'string' && m.id.length <= 64 &&
     typeof m.u === 'string' && m.u.length <= 200 &&
     typeof m.t === 'string' && m.t.length > 0 && Number.isFinite(m.z) &&
-    (m.g === undefined || gecerliGif(m.g))
+    (m.g === undefined || gecerliGif(m.g)) &&
+    (m.r === undefined || (m.g === undefined && gecerliResim(m.r)))
 }
 
 // GIF bilgisi başkasından geldiği için sıkı kontrol: sadece Klipy'nin medya sunucularından
@@ -1352,7 +1448,6 @@ function seviyeIzle(analiz, cb) {
 // art arda mesajları tek başlık altında toplanır (isim tekrar tekrar yazılmaz).
 function mesajlariCiz() {
   const kutu = $('mesajlar')
-  const alttaydi = kutu.scrollHeight - kutu.scrollTop - kutu.clientHeight < 40
   const bugun = new Date().toDateString()
   let onceki
   kutu.replaceChildren(...gecmis.map(m => {
@@ -1381,13 +1476,221 @@ function mesajlariCiz() {
       d.append(kim)
     }
     const t = document.createElement('div')
-    if (m.g) t.append(gifResmi(m))
-    else t.textContent = m.t
+    if (m.r) t.append(resimElemani(m))
+    else if (m.g) t.append(gifResmi(m))
+    else emojiliYaz(t, m.t)
     d.append(t)
     return d
   }))
-  if (alttaydi) kutu.scrollTop = 1e9
+  if (altaYapisik) kutu.scrollTop = 1e9
 }
+// Sohbet en alttan başlar ve kullanıcı yukarı kaydırmadıkça yeni mesajlarla birlikte
+// altta kalır. Eskiden "altta mıydı" çizim anında ölçülüyordu; ilk çizimde sohbet henüz
+// gizli olduğu için ölçüm boşa gidiyor, açılınca en üstte kalıyordu. Artık durum kaydırmayla
+// tutulur; sohbet görünür olunca ya da boyutu değişince (pencere, sütun) tekrar alta iner.
+let altaYapisik = true
+$('mesajlar').addEventListener('scroll', () => {
+  const k = $('mesajlar')
+  if (k.clientHeight) altaYapisik = k.scrollHeight - k.scrollTop - k.clientHeight < 40
+})
+new ResizeObserver(() => { if (altaYapisik) $('mesajlar').scrollTop = 1e9 }).observe($('mesajlar'))
+
+// Yazıyı emojileri ayrı (büyük) gösterecek şekilde yerleştirir. Sadece emoji varsa
+// (en çok 27 tane, Discord'daki gibi) hepsi iri görünür. Yazı her zaman textContent ile
+// eklenir, HTML olarak yorumlanmaz.
+const EMOJI = /\p{RI}\p{RI}|\p{Extended_Pictographic}(?:\uFE0F|\p{EMod})?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\p{EMod})?)*/gu
+function emojiliYaz(el, yazi) {
+  let son = 0, sayi = 0
+  for (const e of yazi.matchAll(EMOJI)) {
+    if (e.index > son) el.append(yazi.slice(son, e.index))
+    el.append(Object.assign(document.createElement('span'), {className: 'emoji', textContent: e[0]}))
+    son = e.index + e[0].length
+    sayi++
+  }
+  if (son < yazi.length) el.append(yazi.slice(son))
+  if (sayi && sayi <= 27 && !yazi.replace(EMOJI, '').trim()) el.classList.add('sadeceEmoji')
+}
+
+// ---- Sohbette fotoğraf ----
+// Sunucu yok: fotoğraf doğrudan odadakilere gider ve her bilgisayarda ayrı bir depoda
+// (IndexedDB) saklanır; mesaj geçmişinin (localStorage) 5 MB sınırı fotoğraflara yetmez.
+const RESIM_TIPLERI = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const RESIM_MAX = 1900 * 1024   // Trystero tek mesajda en çok 2 MB taşır
+const RESIM_KENAR = 1600        // gönderilmeden önce en uzun kenar bu kadara küçültülür
+const RESIM_SAKLA = 200         // bu bilgisayarda saklanan en çok fotoğraf (eskiler silinir)
+let resimGonder = async () => {}   // odaya girince tanımlanır
+let resimIste = () => {}
+const resimler = new Map()         // mesaj id -> <img> (her çizimde baştan yüklenmesin)
+const eksikResimler = new Set()    // elimizde olmayan fotoğraflar (odadakilerden istenir)
+
+function gecerliResim(r) {
+  return !!r && typeof r === 'object' && RESIM_TIPLERI.includes(r.tip) &&
+    typeof r.ozet === 'string' && /^[0-9a-f]{64}$/.test(r.ozet) &&
+    Number.isInteger(r.b) && r.b > 0 && r.b <= RESIM_MAX &&
+    Number.isInteger(r.w) && Number.isInteger(r.h) && r.w > 0 && r.h > 0 && r.w <= 10000 && r.h <= 10000
+}
+async function ozetAl(veri) {
+  const o = new Uint8Array(await crypto.subtle.digest('SHA-256', veri))
+  return Array.from(o, b => b.toString(16).padStart(2, '0')).join('')
+}
+
+let depoSozu
+function depo() {
+  return depoSozu ??= new Promise((ok, hata) => {
+    const r = indexedDB.open('monke', 1)
+    r.onupgradeneeded = () => r.result.createObjectStore('resimler', {keyPath: 'id'}).createIndex('z', 'z')
+    r.onsuccess = () => ok(r.result)
+    r.onerror = () => hata(r.error)
+  })
+}
+async function resimKaydi(id) {
+  try {
+    const d = await depo()
+    return await new Promise((ok, hata) => {
+      const r = d.transaction('resimler').objectStore('resimler').get(id)
+      r.onsuccess = () => ok(r.result || null)
+      r.onerror = () => hata(r.error)
+    })
+  } catch { return null }
+}
+// Veri ArrayBuffer olarak saklanır (bazı WebKit sürümleri IndexedDB'de Blob saklamakta sorun çıkarıyor).
+async function resimSakla(id, veri, tip) {
+  try {
+    const d = await depo()
+    await new Promise((ok, hata) => {
+      const tx = d.transaction('resimler', 'readwrite')
+      tx.objectStore('resimler').put({id, veri, tip, z: Date.now()})
+      tx.oncomplete = ok
+      tx.onerror = () => hata(tx.error)
+    })
+    // Sınırı aşınca en eski fotoğraflar silinir.
+    const tx = d.transaction('resimler', 'readwrite'), st = tx.objectStore('resimler'), say = st.count()
+    say.onsuccess = () => {
+      let fazla = say.result - RESIM_SAKLA
+      if (fazla > 0) st.index('z').openCursor().onsuccess = e => {
+        const c = e.target.result
+        if (c && fazla-- > 0) { c.delete(); c.continue() }
+      }
+    }
+  } catch {}
+}
+
+// Mesajdaki fotoğraf. Boyutu önceden verilir ki yüklenirken sohbet zıplamasın.
+function resimElemani(m) {
+  let img = resimler.get(m.id)
+  if (img) return img
+  const olcek = Math.min(1, 320 / m.r.w, 280 / m.r.h)
+  img = new Image(Math.max(40, Math.round(m.r.w * olcek)), Math.max(40, Math.round(m.r.h * olcek)))
+  img.className = 'resim'
+  img.alt = 'Fotoğraf'
+  img.dataset.id = m.id
+  img.onload = () => img.classList.add('yuklendi')
+  resimler.set(m.id, img)
+  resimKaydi(m.id).then(k => {
+    if (k) img.src = URL.createObjectURL(new Blob([k.veri], {type: k.tip}))
+    else {
+      // Yeni gelen mesajın fotoğrafı hemen arkasından gelir; birkaç saniye bekleyip
+      // hâlâ yoksa odadakilerden iste.
+      eksikResimler.add(m.id)
+      setTimeout(() => { if (eksikResimler.has(m.id)) resimIste(m.id) }, 4000)
+    }
+  })
+  return img
+}
+async function resimGeldi(m, veri) {
+  eksikResimler.delete(m.id)
+  await resimSakla(m.id, veri, m.r.tip)
+  const img = resimler.get(m.id)
+  if (img && !img.src) img.src = URL.createObjectURL(new Blob([veri], {type: m.r.tip}))
+}
+
+// Gönderilecek fotoğrafı hazırlar: en uzun kenar 1600 piksele küçültülür ve yeniden
+// kodlanır (bu sırada konum gibi gizli bilgiler de silinir). Ekran görüntüleri (PNG)
+// yazılar bulanıklaşmasın diye PNG kalır; çok büyükse JPEG'e çevrilir.
+// GIF hareketli kalsın diye olduğu gibi gider.
+async function resimHazirla(dosya) {
+  if (!RESIM_TIPLERI.includes(dosya.type)) throw new Error('Sadece fotoğraf gönderilebilir (JPEG, PNG, WebP, GIF)')
+  const bmp = await createImageBitmap(dosya).catch(() => { throw new Error('Fotoğraf açılamadı') })
+  if (dosya.type === 'image/gif') {
+    const w = bmp.width, h = bmp.height
+    bmp.close()
+    if (dosya.size > RESIM_MAX) throw new Error('GIF en fazla 1,9 MB olabilir')
+    return {veri: await dosya.arrayBuffer(), tip: 'image/gif', w, h}
+  }
+  const olcek = Math.min(1, RESIM_KENAR / Math.max(bmp.width, bmp.height))
+  const w = Math.max(1, Math.round(bmp.width * olcek)), h = Math.max(1, Math.round(bmp.height * olcek))
+  const tuval = document.createElement('canvas')
+  tuval.width = w
+  tuval.height = h
+  const c = tuval.getContext('2d')
+  const ciz = zemin => {
+    c.clearRect(0, 0, w, h)
+    if (zemin) { c.fillStyle = '#fff'; c.fillRect(0, 0, w, h) }  // JPEG'de saydam yerler siyah olmasın
+    c.drawImage(bmp, 0, 0, w, h)
+  }
+  const blobAl = (tip, kalite) => new Promise(ok => tuval.toBlob(ok, tip, kalite))
+  let blob = null
+  if (dosya.type === 'image/png') { ciz(false); blob = await blobAl('image/png') }
+  if (!blob || blob.size > 1024 * 1024) {
+    ciz(true)
+    for (const kalite of [.85, .75, .6, .45]) {
+      blob = await blobAl('image/jpeg', kalite)
+      if (blob && blob.size <= 700 * 1024) break
+    }
+  }
+  bmp.close()
+  if (!blob || blob.size > RESIM_MAX) throw new Error('Fotoğraf çok büyük')
+  return {veri: await blob.arrayBuffer(), tip: blob.type, w, h}
+}
+
+// Fotoğraf seçme, yapıştırma (Cmd/Ctrl+V) ve sürükleyip bırakma. Tek seferde en çok 5 tane.
+let uyariZamanlayici
+function sohbetUyari(metin) {
+  $('sohbetUyari').textContent = metin
+  clearTimeout(uyariZamanlayici)
+  uyariZamanlayici = setTimeout(() => $('sohbetUyari').textContent = '', 6000)
+}
+async function resimleriGonder(dosyalar) {
+  const liste = [...dosyalar].filter(d => d.type.startsWith('image/'))
+  if (!liste.length) return false
+  if (liste.length > 5) sohbetUyari('Tek seferde en çok 5 fotoğraf gönderilir')
+  for (const d of liste.slice(0, 5)) {
+    try { await resimGonder(d) } catch (e) { sohbetUyari(e.message || 'Fotoğraf gönderilemedi') }
+  }
+  return true
+}
+$('resimAc').onclick = () => $('resimDosya').click()
+$('resimDosya').onchange = () => {
+  resimleriGonder($('resimDosya').files)
+  $('resimDosya').value = ''
+}
+document.addEventListener('paste', e => {
+  if ($('app').style.display !== 'flex') return
+  const dosyalar = [...(e.clipboardData?.files || [])]
+  if (dosyalar.some(d => d.type.startsWith('image/'))) {
+    e.preventDefault()
+    resimleriGonder(dosyalar)
+  }
+})
+let surukleSayac = 0
+const dosyaMi = e => [...(e.dataTransfer?.types || [])].includes('Files')
+$('sag').addEventListener('dragenter', e => {
+  if (!dosyaMi(e)) return
+  e.preventDefault()
+  surukleSayac++
+  $('surukle').classList.add('acik')
+})
+$('sag').addEventListener('dragover', e => { if (dosyaMi(e)) e.preventDefault() })
+$('sag').addEventListener('dragleave', () => {
+  if (--surukleSayac <= 0) { surukleSayac = 0; $('surukle').classList.remove('acik') }
+})
+$('sag').addEventListener('drop', e => {
+  if (!dosyaMi(e)) return
+  e.preventDefault()
+  surukleSayac = 0
+  $('surukle').classList.remove('acik')
+  resimleriGonder(e.dataTransfer.files)
+})
 
 // Mesajdaki GIF. Aynı mesajın resmi tekrar kullanılır; yoksa her yeni mesajda bütün
 // GIF'ler baştan yüklenip başa sarardı. Boyut önceden verilir ki yüklenirken sayfa zıplamasın.

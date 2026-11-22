@@ -14,7 +14,8 @@
         "width": 900,
         "height": 600,
         "minWidth": 600,
-        "minHeight": 400
+        "minHeight": 400,
+        "dragDropEnabled": false
       }
     ],
     "security": {
@@ -23,7 +24,7 @@
         "script-src": "'self'",
         "style-src": "'self' 'unsafe-inline'",
         "connect-src": "'self' ipc: http://ipc.localhost wss: https://api.klipy.com",
-        "img-src": "'self' data: https://static.klipy.com https://static1.klipy.com https://static2.klipy.com",
+        "img-src": "'self' data: blob: https://static.klipy.com https://static1.klipy.com https://static2.klipy.com",
         "media-src": "'self' blob: mediastream:",
         "worker-src": "'self' blob:"
       }
