@@ -36,6 +36,8 @@ pub const KARE: usize = nnnoiseless::FRAME_SIZE;
 /// Açılan mikrofon hakkında bilgi.
 #[derive(Debug, Clone)]
 pub struct Bilgi {
+    /// Açılan cihazın kalıcı kimliği (seçimi saklamak için).
+    pub id: String,
     pub cihaz: String,
     pub cihaz_hizi: u32,
     pub kanal: u16,
@@ -49,19 +51,52 @@ pub struct Mikrofon {
     isci: Option<JoinHandle<()>>,
 }
 
+/// Listede gösterilecek bir mikrofon.
+#[derive(Debug, Clone)]
+pub struct Cihaz {
+    pub id: String,
+    pub ad: String,
+    pub varsayilan: bool,
+}
+
+/// Sistemdeki mikrofonları listeler. Sadece listeler, hiçbirini açmaz
+/// (Mac'te izin penceresi çıkmaz, Windows'ta ducking olmaz).
+pub fn cihazlar() -> Result<Vec<Cihaz>> {
+    let host = cpal::default_host();
+    let varsayilan = host.default_input_device().and_then(|c| c.id().ok());
+    let mut liste = Vec::new();
+    for cihaz in host.input_devices().context("Mikrofonlar listelenemedi")? {
+        let Ok(id) = cihaz.id() else { continue };
+        let ad = cihaz
+            .description()
+            .map(|d| d.name().to_string())
+            .unwrap_or_else(|_| "Bilinmeyen".into());
+        liste.push(Cihaz {
+            varsayilan: varsayilan.as_ref() == Some(&id),
+            id: id.to_string(),
+            ad,
+        });
+    }
+    Ok(liste)
+}
+
 impl Mikrofon {
-    /// Varsayılan mikrofonu açar.
+    /// Mikrofonu açar: `cihaz_id` verilmişse o cihazı, yoksa (ya da o cihaz artık
+    /// takılı değilse) sistemin varsayılan mikrofonunu.
     ///
     /// `gurultu_engelle`: RNNoise açık mı (çalışırken değiştirilebilir).
     /// `cikis`: her 10 ms'de bir çağrılır; 480 örnek, 48 kHz, mono, [-1, 1] aralığında
     /// ve RNNoise'un konuşma olasılığı (0..1).
-    pub fn ac<F>(gurultu_engelle: Arc<AtomicBool>, cikis: F) -> Result<Self>
+    pub fn ac<F>(cihaz_id: Option<&str>, gurultu_engelle: Arc<AtomicBool>, cikis: F) -> Result<Self>
     where
         F: FnMut(&[f32], f32) + Send + 'static,
     {
         let host = cpal::default_host();
-        let cihaz = host
-            .default_input_device()
+        let secilen = cihaz_id
+            .and_then(|id| id.parse::<cpal::DeviceId>().ok())
+            .and_then(|id| host.device_by_id(&id));
+        let cihaz = secilen
+            .or_else(|| host.default_input_device())
             .ok_or_else(|| anyhow!("Mikrofon bulunamadı"))?;
         // Cihazın kendi varsayılan ayarını kullanıyoruz. Başka bir hız istemek cihazın
         // (örneğin USB kulaklığın) hızını değiştirip oyun sesini etkileyebilirdi.
@@ -69,6 +104,7 @@ impl Mikrofon {
             .default_input_config()
             .context("Mikrofon ayarı okunamadı")?;
         let bilgi = Bilgi {
+            id: cihaz.id().map(|i| i.to_string()).unwrap_or_default(),
             cihaz: cihaz
                 .description()
                 .map(|d| d.name().to_string())

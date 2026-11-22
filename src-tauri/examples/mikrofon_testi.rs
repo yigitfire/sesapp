@@ -38,7 +38,7 @@ fn main() -> anyhow::Result<()> {
     let mik = {
         let kayit = kayit.clone();
         let olcum = olcum.clone();
-        Mikrofon::ac(Arc::new(AtomicBool::new(true)), move |kare, konusma| {
+        Mikrofon::ac(None, Arc::new(AtomicBool::new(true)), move |kare, konusma| {
             if let Some(w) = kayit.lock().unwrap().as_mut() {
                 for &s in kare {
                     let _ = w.write_sample(s);

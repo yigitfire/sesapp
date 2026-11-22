@@ -20,8 +20,27 @@ struct Durum {
 
 #[derive(Serialize)]
 struct MikrofonBilgisi {
+    id: String,
     cihaz: String,
     hiz: u32,
+}
+
+#[derive(Serialize)]
+struct MikrofonCihazi {
+    id: String,
+    ad: String,
+    varsayilan: bool,
+}
+
+/// Sistemdeki mikrofonların listesi (menüde seçmek için). Hiçbirini açmaz.
+/// async: Windows'ta cihazları saymak biraz sürebilir, arayüz thread'i beklemesin.
+#[tauri::command]
+async fn mikrofonlar() -> Result<Vec<MikrofonCihazi>, String> {
+    let liste = mikrofon::cihazlar().map_err(|e| e.to_string())?;
+    Ok(liste
+        .into_iter()
+        .map(|c| MikrofonCihazi { id: c.id, ad: c.ad, varsayilan: c.varsayilan })
+        .collect())
 }
 
 /// Mikrofonu açar ve her 10 ms'lik kareyi `kanal` üzerinden arayüze yollar.
@@ -36,6 +55,7 @@ struct MikrofonBilgisi {
 async fn mikrofon_ac(
     durum: tauri::State<'_, Durum>,
     kanal: Channel<InvokeResponseBody>,
+    cihaz: Option<String>,
 ) -> Result<MikrofonBilgisi, String> {
     // Önceki mikrofon varsa önce onu kapat (aynı anda iki mikrofon akışı olmasın).
     *durum.mikrofon.lock().unwrap() = None;
@@ -49,7 +69,7 @@ async fn mikrofon_ac(
         .name("mikrofon".into())
         .spawn(move || {
             let mut bayt = vec![0u8; mikrofon::KARE * 2];
-            let sonuc = mikrofon::Mikrofon::ac(Arc::new(AtomicBool::new(true)), move |kare, _| {
+            let sonuc = mikrofon::Mikrofon::ac(cihaz.as_deref(), Arc::new(AtomicBool::new(true)), move |kare, _| {
                 for (i, &s) in kare.iter().enumerate() {
                     let v = (s * 32767.0).round() as i16;
                     bayt[i * 2..i * 2 + 2].copy_from_slice(&v.to_le_bytes());
@@ -60,6 +80,7 @@ async fn mikrofon_ac(
             match sonuc {
                 Ok(mik) => {
                     let _ = hazir_tx.send(Ok(MikrofonBilgisi {
+                        id: mik.bilgi.id.clone(),
                         cihaz: mik.bilgi.cihaz.clone(),
                         hiz: mik.bilgi.cihaz_hizi,
                     }));
@@ -266,7 +287,7 @@ pub fn calistir() {
     });
     builder
         .manage(Durum::default())
-        .invoke_handler(tauri::generate_handler![mikrofon_ac, mikrofon_kapat, konsol])
+        .invoke_handler(tauri::generate_handler![mikrofon_ac, mikrofon_kapat, mikrofonlar, konsol])
         .run(tauri::generate_context!())
         .expect("uygulama başlatılamadı");
 }
