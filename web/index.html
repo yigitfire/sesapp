@@ -153,13 +153,24 @@
             flex-direction:column;gap:8px;padding:10px;border-radius:12px;background:var(--bg2);box-shadow:0 12px 32px #0007}
   #gifPanel.acik{display:flex}
   #gifAra{width:100%}
-  #gifIzgara{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:110px;gap:6px;align-content:start}
-  #gifIzgara button{padding:0;border-radius:6px;overflow:hidden;background:var(--bg3)}
+  #gifIzgara{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;align-content:start}
+  #gifIzgara button{height:110px;padding:0;border-radius:6px;overflow:hidden;background:var(--bg3)}
   #gifIzgara img{width:100%;height:100%;object-fit:cover;display:block}
   #gifIzgara button:hover{outline:2px solid var(--yazi)}
   #gifDurum{grid-column:1/-1;padding:20px 0;text-align:center;font-size:13px;color:var(--soluk)}
   #gifDurum:empty{display:none}
   #gifPanel .klipy{font-size:11px;text-align:right;color:var(--soluk)}
+  .gifBaslik{grid-column:1/-1;font-size:11px;font-weight:600;color:var(--soluk);margin:2px 2px 0}
+
+  /* Emoji paneli: kategoriler alt alta, tıklanan emoji yazının imleç olduğu yerine girer. */
+  #emojiPanel{display:none;position:absolute;right:16px;bottom:72px;z-index:3;width:min(360px,calc(100% - 32px));height:340px;
+              padding:6px 4px 6px 8px;border-radius:12px;background:var(--bg2);box-shadow:0 12px 32px #0007}
+  #emojiPanel.acik{display:flex}
+  #emojiIzgara{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(8,1fr);align-content:start}
+  #emojiIzgara h4{grid-column:1/-1;margin:8px 4px 4px;font-size:11px;font-weight:600;color:var(--soluk)}
+  #emojiIzgara button{font-size:22px;line-height:1;padding:5px 0;border-radius:6px;
+                      font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}
+  #emojiIzgara button:hover{background:var(--bg4)}
   .msj img.gif{display:block;max-width:100%;height:auto;margin:4px 0 2px;border-radius:8px;background:var(--bg3)}
   #mesajlar{flex:1;overflow:auto;padding:16px 20px 8px;user-select:text;-webkit-user-select:text}
   /* Mesajlar: grubun ilk mesajında solda kişinin yuvarlağı, devamı aynı hizada. */
@@ -228,6 +239,7 @@
   <symbol id="i-hop" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.4 18.4a9 9 0 0 0 0-12.8"/></symbol>
   <symbol id="i-hop-yok" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></symbol>
   <symbol id="i-gif" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><text x="12" y="15.2" text-anchor="middle" font-size="7.5" font-weight="700" font-family="Noto Sans, sans-serif" fill="currentColor" stroke="none">GIF</text></symbol>
+  <symbol id="i-emoji" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01"/><path d="M15 9h.01"/></symbol>
   <symbol id="i-gonder" viewBox="0 0 24 24"><path d="M14.5 21.7a.5.5 0 0 0 .9 0l6.5-19a.5.5 0 0 0-.6-.6l-19 6.5a.5.5 0 0 0 0 .9l7.9 3.2a2 2 0 0 1 1.1 1.1z"/><path d="m21.9 2.1-11 11"/></symbol>
   <symbol id="i-cik" viewBox="0 0 24 24"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></symbol>
   <symbol id="i-ayar" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
@@ -275,9 +287,11 @@
     <div id="mesajlar"></div>
     <div id="yaz">
       <input id="mesaj" placeholder="Mesaj yaz">
+      <button class="ib" id="emojiAc" title="Emoji"><svg class="i"><use href="#i-emoji"/></svg></button>
       <button class="ib" id="gifAc" title="GIF"><svg class="i"><use href="#i-gif"/></svg></button>
       <button class="ib" id="gonder" title="Gönder"><svg class="i"><use href="#i-gonder"/></svg></button>
     </div>
+    <div id="emojiPanel"><div id="emojiIzgara"></div></div>
     <div id="gifPanel">
       <input id="gifAra" placeholder="Search KLIPY" maxlength="50">
       <div id="gifIzgara"><div id="gifDurum"></div></div>
@@ -328,6 +342,12 @@ const GECMIS_MAX = 1000
 // Kalıcı kayıt (cihazda). Bozuk/erişilemeyen depoda uygulama yine çalışsın diye try içinde.
 const oku = (k, v) => { try { return JSON.parse(localStorage.getItem(k)) ?? v } catch { return v } }
 const kaydet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} }
+// Bizim GIF'lerimiz: uygulamanın içinde gelir (web/gif/ klasörü). Mesajla sadece bu bilgi gider,
+// herkes GIF'i kendi uygulamasındaki kopyadan gösterir; internetten indirilmez.
+// Yeni GIF eklemek için dosyayı web/gif/'e koyup buraya bir satır eklemek yeter.
+const MONKE_GIFLER = [
+  {s: 'monke-coin', t: 'Monke', u: 'gif/monke-coin.gif', w: 400, h: 400},
+]
 
 // Hesap = Trystero'nun cihazda sakladığı kalıcı, şifreli userId. Mesajlar isme değil
 // bu kimliğe bağlı; isim/renk değişince eski mesajlar da yeni isim/renkle görünür.
@@ -907,11 +927,13 @@ function gecerliMesaj(m) {
 }
 
 // GIF bilgisi başkasından geldiği için sıkı kontrol: sadece Klipy'nin medya sunucularından
-// bir adres kabul edilir (başka sitelerden resim yüklenip IP adresi sızdırılamasın).
+// veya uygulamanın içindeki kendi GIF'lerimizden bir adres kabul edilir
+// (başka sitelerden resim yüklenip IP adresi sızdırılamasın).
 function gecerliGif(g) {
   return !!g && typeof g === 'object' && typeof g.s === 'string' && g.s.length <= 200 &&
     typeof g.t === 'string' && g.t.length <= 200 &&
-    typeof g.u === 'string' && g.u.length <= 500 && /^https:\/\/static\d?\.klipy\.com\/[\w\-./]+$/.test(g.u) &&
+    typeof g.u === 'string' && g.u.length <= 500 &&
+    (/^https:\/\/static\d?\.klipy\.com\/[\w\-./]+$/.test(g.u) || MONKE_GIFLER.some(x => x.u === g.u)) &&
     Number.isInteger(g.w) && Number.isInteger(g.h) && g.w > 0 && g.h > 0 && g.w <= 4000 && g.h <= 4000
 }
 
@@ -1224,12 +1246,60 @@ function gifPaneliAc() {
 const gifPaneliKapat = () => $('gifPanel').classList.remove('acik')
 $('gifAc').onclick = e => {
   e.stopPropagation()
+  emojiPaneliKapat()
   $('gifPanel').classList.contains('acik') ? gifPaneliKapat() : gifPaneliAc()
 }
 document.addEventListener('pointerdown', e => {
   if (!$('gifPanel').contains(e.target) && !$('gifAc').contains(e.target)) gifPaneliKapat()
+  if (!$('emojiPanel').contains(e.target) && !$('emojiAc').contains(e.target)) emojiPaneliKapat()
 })
-document.addEventListener('keydown', e => { if (e.key === 'Escape') gifPaneliKapat() })
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { gifPaneliKapat(); emojiPaneliKapat() } })
+
+// ---- Emoji paneli ----
+// Emojiler normal yazı olarak gider; her bilgisayar kendi emoji yazı tipiyle gösterir
+// (Mac'te Apple, Windows'ta Windows emojileri). En üstte son kullanılanlar durur.
+const EMOJILER = [
+  ['Yüzler', '😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 😉 😊 😇 🥰 😍 🤩 😘 😗 😚 😙 😋 😛 😜 🤪 😝 🤑 🤗 🤭 🤫 🤔 🤐 🤨 😐 😑 😶 😏 😒 🙄 😬 🤥 😌 😔 😪 🤤 😴 😷 🤒 🤕 🤢 🤮 🤧 🥵 🥶 🥴 😵 🤯 🤠 🥳 😎 🤓 🧐 😕 😟 🙁 😮 😯 😲 😳 🥺 😦 😧 😨 😰 😥 😢 😭 😱 😖 😣 😞 😓 😩 😫 🥱 😤 😡 😠 🤬 😈 👿 💀 ☠️ 💩 🤡 👹 👺 👻 👽 👾 🤖 😺 😸 😹 😻 😼 😽 🙀 😿 😾 🙈 🙉 🙊'],
+  ['Eller ve insanlar', '👋 🤚 🖐️ ✋ 🖖 👌 🤌 🤏 ✌️ 🤞 🤟 🤘 🤙 👈 👉 👆 🖕 👇 ☝️ 👍 👎 ✊ 👊 🤛 🤜 👏 🙌 👐 🤲 🤝 🙏 ✍️ 💅 💪 🧠 👀 👁️ 👅 👄 💋 👶 🧒 👦 👧 🧑 👨 👩 🧓 👴 👵 🙋 🙅 🙆 🤷 🤦 🙇 💃 🕺 🚶 🏃'],
+  ['Kalpler ve semboller', '❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💯 💢 💥 💫 💦 💨 💬 💭 💤 ✅ ❌ ❗ ❓ ⚠️ 🔥 ✨ ⭐ 🌟 ⚡ 🎉 🎊 🏆 🥇 🎯 🇹🇷'],
+  ['Hayvanlar ve doğa', '🐵 🐒 🦍 🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐔 🐧 🐦 🐤 🦆 🦅 🦉 🦇 🐺 🐗 🐴 🦄 🐝 🐛 🦋 🐌 🐞 🐢 🐍 🦎 🐙 🦑 🦀 🐠 🐟 🐬 🐳 🦈 🐊 🐘 🦒 🐪 🐄 🐑 🐐 🐈 🐕 🌵 🌲 🌴 🌱 🍀 🍁 🍂 🌷 🌹 🌻 🌸 🌞 🌝 🌚 🌙 🌈 ☀️ ⛅ 🌧️ ⛄ ❄️ 🌊'],
+  ['Yiyecek ve içecek', '🍏 🍎 🍐 🍊 🍋 🍌 🍉 🍇 🍓 🍒 🍑 🥭 🍍 🥥 🥝 🍅 🍆 🥑 🥦 🌶️ 🌽 🥕 🥔 🥐 🍞 🧀 🥚 🍳 🥓 🍗 🍖 🌭 🍔 🍟 🍕 🥪 🌮 🌯 🥙 🍝 🍜 🍲 🍣 🍱 🍤 🍚 🍦 🍰 🎂 🍫 🍬 🍭 🍩 🍪 🍿 ☕ 🍵 🥤 🧃 🍺 🍻 🥂 🍷 🥃 🍹'],
+  ['Etkinlik ve nesneler', '⚽ 🏀 🏈 ⚾ 🎾 🏐 🎱 🏓 🥊 🎮 🕹️ 🎲 ♟️ 🎧 🎤 🎸 🎹 🥁 🎬 🎨 🚗 🏎️ 🚓 🚑 🚒 🚀 ✈️ 🚁 ⛵ 🏠 🏰 💻 🖥️ ⌨️ 🖱️ 📱 📷 📺 📞 ⏰ 💡 💰 💸 💎 🔧 🔨 ⚙️ 💣 🔪 🛡️ 🔑 🎁 🎈 📌 📎 ✏️ 📝 📚 🔒 🔔 🎵 🎶'],
+].map(([ad, liste]) => [ad, liste.split(' ')])
+
+function emojiPaneliAc() {
+  const iz = $('emojiIzgara'), son = oku('sonEmojiler', [])
+  iz.replaceChildren()
+  for (const [ad, liste] of [...(son.length ? [['Son kullanılanlar', son]] : []), ...EMOJILER]) {
+    const h = document.createElement('h4')
+    h.textContent = ad
+    iz.append(h)
+    for (const e of liste) {
+      const b = document.createElement('button')
+      b.textContent = e
+      b.onpointerdown = ev => ev.preventDefault()  // yazı kutusu odağını kaybetmesin
+      b.onclick = () => emojiKoy(e)
+      iz.append(b)
+    }
+  }
+  iz.scrollTop = 0
+  $('emojiPanel').classList.add('acik')
+}
+const emojiPaneliKapat = () => $('emojiPanel').classList.remove('acik')
+$('emojiAc').onclick = e => {
+  e.stopPropagation()
+  gifPaneliKapat()
+  $('emojiPanel').classList.contains('acik') ? emojiPaneliKapat() : emojiPaneliAc()
+}
+// Emojiyi imlecin olduğu yere koyar (seçili yazı varsa onun yerine). Panel açık kalır,
+// arka arkaya birkaç emoji seçilebilir.
+function emojiKoy(e) {
+  const k = $('mesaj'), bas = k.selectionStart ?? k.value.length, son = k.selectionEnd ?? bas
+  k.value = k.value.slice(0, bas) + e + k.value.slice(son)
+  k.focus()
+  k.setSelectionRange(bas + e.length, bas + e.length)
+  kaydet('sonEmojiler', [e, ...oku('sonEmojiler', []).filter(x => x !== e)].slice(0, 16))
+}
 // Her harfte değil, yazmayı bırakınca ara (istek hakkı hızlı bitmesin).
 $('gifAra').oninput = () => {
   clearTimeout(gifZamanlayici)
@@ -1246,6 +1316,7 @@ function gifListele(sorgu) {
   gifSayfa = 0
   gifDahaVar = true
   $('gifIzgara').replaceChildren($('gifDurum'))
+  if (!sorgu) monkeGifleriEkle()
   if (!sorgu && populer && Date.now() - populer.z < 10 * 60e3) {
     gifSayfa = 1
     gifDahaVar = populer.dahaVar
@@ -1290,6 +1361,24 @@ function gifBilgisi(o) {
   if (!orta || !kucuk) return null
   const g = {s: String(o.slug || ''), t: String(o.title || 'GIF').slice(0, 200), u: orta.url, w: orta.width, h: orta.height}
   return gecerliGif(g) ? {g, onizleme: kucuk.url} : null
+}
+
+// Panelin en üstünde bizim GIF'lerimiz, altında "Klipy" başlığıyla Klipy'nin popülerleri.
+// Arama yapınca sadece Klipy sonuçları görünür.
+function monkeGifleriEkle() {
+  const baslik = ad => Object.assign(document.createElement('div'), {className: 'gifBaslik', textContent: ad})
+  $('gifIzgara').insertBefore(baslik('Monke'), $('gifDurum'))
+  for (const g of MONKE_GIFLER) {
+    const b = document.createElement('button')
+    b.title = g.t
+    const img = new Image()
+    img.alt = g.t
+    img.src = g.u
+    b.append(img)
+    b.onclick = () => { gifGonder(g); gifPaneliKapat() }
+    $('gifIzgara').insertBefore(b, $('gifDurum'))
+  }
+  $('gifIzgara').insertBefore(baslik('Klipy'), $('gifDurum'))
 }
 
 function gifEkle(liste) {
