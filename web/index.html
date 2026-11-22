@@ -52,9 +52,11 @@
 </div>
 
 <script type="module">
-import {joinRoom} from 'https://esm.run/trystero@0.27.0'
+import {joinRoom} from './vendor/trystero-0.27.0.js'
 
 const $ = id => document.getElementById(id)
+// Masaüstü uygulamasında (Tauri) mikrofon tarayıcı motoru yerine Rust'tan gelir.
+const masaustu = !!window.__TAURI__
 $('isim').value = localStorage.getItem('isim') || ''
 $('oda').value = localStorage.getItem('oda') || ''
 
@@ -68,17 +70,20 @@ $('katil').onclick = async () => {
   localStorage.setItem('isim', isim)
   localStorage.setItem('oda', oda)
 
-  ctx = new AudioContext({latencyHint: 'interactive'})
+  // Masaüstünde Rust sesi 48 kHz veriyor; AudioContext de 48 kHz olmalı ki
+  // hız dönüşümü olmasın (ses kartı farklıysa tarayıcı çıkışta kendisi çevirir).
+  ctx = new AudioContext(masaustu
+    ? {latencyHint: 'interactive', sampleRate: 48000}
+    : {latencyHint: 'interactive'})
 
-  let mic
+  let micKaynak
   try {
-    mic = await navigator.mediaDevices.getUserMedia({audio: {
-      echoCancellation: true, noiseSuppression: true, autoGainControl: false,
-      channelCount: 1, sampleRate: 48000
-    }})
-  } catch (e) { $('hata').textContent = 'Mikrofon izni verilmedi'; return }
+    micKaynak = masaustu ? await masaustuMikrofon(ctx) : await tarayiciMikrofon(ctx)
+  } catch (e) {
+    $('hata').textContent = masaustu ? 'Mikrofon açılamadı: ' + e : 'Mikrofon izni verilmedi'
+    return
+  }
 
-  const micKaynak = ctx.createMediaStreamSource(mic)
   const micGain = ctx.createGain()
   const micAnaliz = ctx.createAnalyser()
   const cikis = ctx.createMediaStreamDestination()
@@ -107,6 +112,8 @@ $('katil').onclick = async () => {
   })
 
   profil = room.makeUserState('profil', {isim})
+  // makeUserState sadece varsayılanı tanımlar; kendi ismimizi odaya yayınlamak için set gerekir.
+  profil.set({isim})
   profil.onChange((data, {userId, self, removed}) => {
     if (self) return
     if (removed) return kisiSil(userId)
@@ -137,11 +144,40 @@ $('katil').onclick = async () => {
   $('gonder').onclick = gonder
   $('mesaj').onkeydown = e => { if (e.key === 'Enter') gonder() }
 
-  $('cik').onclick = () => { room.leave(); location.reload() }
+  $('cik').onclick = async () => {
+    room.leave()
+    // Sayfa yenilense de Rust tarafındaki mikrofon açık kalırdı; önce kapat.
+    if (masaustu) await window.__TAURI__.core.invoke('mikrofon_kapat')
+    location.reload()
+  }
 
   $('benIsim').textContent = isim
   $('giris').style.display = 'none'
   $('app').style.display = 'flex'
+}
+
+// Tarayıcıda (web linki): mikrofon tarayıcının kendi ses işlemesiyle açılır.
+async function tarayiciMikrofon(ctx) {
+  const mic = await navigator.mediaDevices.getUserMedia({audio: {
+    echoCancellation: true, noiseSuppression: true, autoGainControl: false,
+    channelCount: 1, sampleRate: 48000
+  }})
+  return ctx.createMediaStreamSource(mic)
+}
+
+// Masaüstünde: mikrofonu Rust açar (cpal + RNNoise), 10 ms'lik paketleri Channel ile
+// yollar; worklet bunları Web Audio akışına çevirir. Tarayıcı motoru mikrofona hiç
+// dokunmadığı için Windows/Mac "görüşme modu"na geçmez, oyun sesi kısılmaz.
+async function masaustuMikrofon(ctx) {
+  await ctx.audioWorklet.addModule('mikrofon-worklet.js')
+  const dugum = new AudioWorkletNode(ctx, 'masaustu-mikrofon', {
+    numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1]
+  })
+  const {invoke, Channel} = window.__TAURI__.core
+  const kanal = new Channel()
+  kanal.onmessage = paket => dugum.port.postMessage(paket, [paket])
+  await invoke('mikrofon_ac', {kanal})
+  return dugum
 }
 
 function kisiEkle(userId) {
@@ -175,12 +211,13 @@ function sesBagla(userId, stream) {
   kaynak.connect(k.gain)
   kaynak.connect(analiz)
   k.kaynak = kaynak
-  seviyeIzle(analiz, v => k.el.classList.toggle('konusuyor', v > 0.04))
+  k.izlemeyiDurdur = seviyeIzle(analiz, v => k.el.classList.toggle('konusuyor', v > 0.04))
 }
 
 function kisiSil(userId) {
   const k = kisiler.get(userId)
   if (!k) return
+  k.izlemeyiDurdur?.()
   k.kaynak?.disconnect()
   k.gain.disconnect()
   if (k.audio) k.audio.srcObject = null
@@ -188,16 +225,20 @@ function kisiSil(userId) {
   kisiler.delete(userId)
 }
 
+// 100 ms'de bir ses seviyesini ölçer. Dönen fonksiyon ölçümü durdurur
+// (kişi odadan çıkınca çağrılır; yoksa ölçüm arka planda sonsuza kadar sürerdi).
 function seviyeIzle(analiz, cb) {
   const buf = new Float32Array(analiz.fftSize)
+  let zamanlayici
   const tick = () => {
     analiz.getFloatTimeDomainData(buf)
     let s = 0
     for (const x of buf) s += x * x
     cb(Math.sqrt(s / buf.length))
-    setTimeout(tick, 100)
+    zamanlayici = setTimeout(tick, 100)
   }
   tick()
+  return () => clearTimeout(zamanlayici)
 }
 
 function mesajYaz(kim, text) {

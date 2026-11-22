@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- macOS bu metni mikrofon izni sorarken gösterir. Bu anahtar yoksa izin hiç sorulmaz ve mikrofon sessiz kalır. -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Arkadaşlarınla sesli konuşabilmen için mikrofon gerekiyor.</string>
+</dict>
+</plist>
