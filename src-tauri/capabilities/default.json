@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Ana pencere: sadece Tauri'nin temel izinleri.",
-  "windows": ["main"],
+  "description": "Ana pencere ve bildirim penceresi: sadece Tauri'nin temel izinleri.",
+  "windows": ["main", "bildirim"],
   "permissions": ["core:default"]
 }

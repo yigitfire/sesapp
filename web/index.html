@@ -237,6 +237,14 @@
   .msj img.ozelEmoji{width:1.4em;height:1.4em;vertical-align:-.3em;margin:0 1px}
   .msj .sadeceEmoji img.ozelEmoji{width:3em;height:3em}
   #sohbetUyari{margin:0 16px 6px;font-size:12px;color:var(--kirmizi)}
+  /* Yukarıdayken yeni mesaj gelince yazı kutusunun üstünde çıkan küçük düğme. */
+  #yeniMesaj{display:none;position:absolute;left:50%;bottom:70px;transform:translateX(-50%);z-index:2;align-items:center;gap:4px;
+    padding:4px 11px 4px 7px;border-radius:999px;background:var(--lime);color:#111111;font-size:12px;font-weight:700;
+    box-shadow:0 2px 10px rgba(0,0,0,.35);animation:yeniMesajGel .15s ease-out}
+  #yeniMesaj.var{display:flex}
+  #yeniMesaj .i{width:14px;height:14px;stroke-width:3}
+  #yeniMesaj:hover{filter:brightness(1.08)}
+  @keyframes yeniMesajGel{from{opacity:0;transform:translate(-50%,6px)}}
   #sohbetUyari:empty{display:none}
   #yaz #resimAc{margin-left:4px}
   #mesajlar{flex:1;overflow:auto;padding:16px 20px 8px;user-select:text;-webkit-user-select:text}
@@ -390,6 +398,7 @@
     <div id="surukle">Fotoğrafı bırak, gönderelim</div>
     <div id="oneri"></div>
     <div id="sohbetUyari"></div>
+    <button id="yeniMesaj" title="En alta in"><svg class="i"><use href="#i-asagi"/></svg><span></span></button>
     <div id="yaz">
       <button class="ib" id="resimAc" title="Fotoğraf gönder"><svg class="i"><use href="#i-resim"/></svg></button>
       <input type="file" id="resimDosya" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
@@ -429,6 +438,10 @@
     <label class="anahtar">Biri sese girince<input type="checkbox" data-bildirim="giris"></label>
     <label class="anahtar">Biri sesten çıkınca<input type="checkbox" data-bildirim="cikis"></label>
     <label class="anahtar">Yeni mesaj gelince<input type="checkbox" data-bildirim="mesaj"></label>
+    <div id="ekranBildirimKutu" hidden>
+      <h3>Ekran bildirimi</h3>
+      <label class="anahtar" title="Uygulama arkadayken (örneğin oyundayken) yeni mesaj gelince ya da biri sese girince sağ üstte küçük bir bildirim çıkar. Oyundan çıkarmaz; tıklarsan uygulama açılır.">Uygulama arkadayken göster<input type="checkbox" id="ekranBildirimi"></label>
+    </div>
     <button id="odadanCik">Odadan çık</button>
     <div id="surum">Web</div>
   </div>
@@ -598,13 +611,29 @@ if (masaustu) window.__TAURI__.app.getVersion().then(v => { $('surum').textConte
 // ve daha boğuk üç nota, mesaj: kısa bir "damla" ve tiz bir çın. Sadece hoparlöre çalar;
 // mikrofona ve oyun sesine dokunmaz.
 const TONLAR = {
-  giris: {ses: .2, notalar: [[523.25, 0, .5], [659.25, .075, .5], [783.99, .15, .7]],
+  giris: {ses: .14, notalar: [[523.25, 0, .5], [659.25, .075, .5], [783.99, .15, .7]],
     ust: [[2, .3], [3, .1]], parlaklik: 6000},
-  cikis: {ses: .17, notalar: [[783.99, 0, .45], [622.25, .09, .45], [466.16, .18, .65]],
+  cikis: {ses: .12, notalar: [[783.99, 0, .45], [622.25, .09, .45], [466.16, .18, .65]],
     ust: [[2, .18]], parlaklik: 1800},
-  mesaj: {ses: .26, damla: true, notalar: [[1318.5, .055, .35]],
+  mesaj: {ses: .18, damla: true, notalar: [[1318.5, .055, .35]],
     ust: [[2.76, .12], [5.4, .04]], parlaklik: 8000},
 }
+// Ekran bildirimi (masaüstü): uygulama arkadayken sağ üstte küçük pencere (bildirim.html).
+// Odak çalmaz, oyundan çıkarmaz. Ayarlar'dan kapatılabilir.
+let ekranBildirimiAcik = oku('ekranBildirimi', true) !== false
+if (masaustu) {
+  $('ekranBildirimKutu').hidden = false
+  $('ekranBildirimi').checked = ekranBildirimiAcik
+  $('ekranBildirimi').onchange = () => { ekranBildirimiAcik = $('ekranBildirimi').checked; kaydet('ekranBildirimi', ekranBildirimiAcik) }
+}
+function ekranBildirimi(userId, ne, metin) {
+  // Pencere en öndeyse çıkmaz: bunu Rust pencerenin gerçek odağına bakarak karar verir.
+  if (!masaustu || !ekranBildirimiAcik) return
+  const veri = {ad: isimAl(userId), renk: renkAl(userId), harf: basHarf(userId), foto: profiller[userId]?.foto || '',
+    ne, metin: String(metin || '').replace(KOD, (x, k) => EMOJI_KODLARI[k] || x).slice(0, 200)}
+  window.__TAURI__.core.invoke('bildirim_goster', {veri}).catch(() => {})
+}
+
 let bildirimCikisi = null
 function bildirimHatti() {
   // Hepsinin geçtiği ortak çıkış: biraz yankı (geri beslemeli gecikme) ve sesi toparlayan sıkıştırıcı.
@@ -821,7 +850,7 @@ async function katil(isim, oda) {
     const once = seste.get(userId), simdi = data?.var !== false
     seste.set(userId, simdi)
     if (bildirimZamani() && simdi !== once) {
-      if (simdi) cal('giris')
+      if (simdi) { cal('giris'); ekranBildirimi(userId, 'sese girdi', 'Ses odasına katıldı') }
       else if (once === true) cal('cikis')
     }
     kisiEkle(userId)
@@ -840,7 +869,10 @@ async function katil(isim, oda) {
     if (m?.g !== undefined) mesaj.g = m.g
     if (m?.r !== undefined) mesaj.r = m.r
     mesajTemizle(mesaj)
-    if (gecerliMesaj(mesaj) && mesajEkle([mesaj])) cal('mesaj')
+    if (gecerliMesaj(mesaj) && mesajEkle([mesaj])) {
+      cal('mesaj')
+      ekranBildirimi(userId, 'mesaj', mesaj.r ? '📷 Fotoğraf' : mesaj.g ? 'GIF gönderdi' : mesaj.t)
+    }
     // Fotoğrafın kendisi mesajdan önce geldiyse şimdi yerine koy.
     if (mesaj.r && bekleyenResimler.has(mesaj.id)) {
       const veri = bekleyenResimler.get(mesaj.id)
@@ -1491,7 +1523,12 @@ function mesajEkle(liste) {
   if (!yeniler.length) return 0
   gecmis = gecmis.concat(yeniler).sort((a, b) => a.z - b.z).slice(-GECMIS_MAX)
   kaydet(gecmisAnahtari, gecmis)
+  // Kendi mesajımı gönderince her zaman en alta inilir. Başkasının yeni mesajı gelince
+  // yukarıdaysam "yeni mesaj" düğmesi çıkar (girişte eşitlemeyle gelen eski mesajlar sayılmaz).
+  if (yeniler.some(m => m.u === benimId)) altaYapisik = true
+  else if (!altaYapisik) yeniMesajSayisi += yeniler.filter(m => m.z > odaGirisi).length
   mesajlariCiz()
+  yeniMesajGoster()
   uyeleriCiz()
   return yeniler.length
 }
@@ -1762,11 +1799,23 @@ function mesajlariCiz() {
 // altta kalır. Eskiden "altta mıydı" çizim anında ölçülüyordu; ilk çizimde sohbet henüz
 // gizli olduğu için ölçüm boşa gidiyor, açılınca en üstte kalıyordu. Artık durum kaydırmayla
 // tutulur; sohbet görünür olunca ya da boyutu değişince (pencere, sütun) tekrar alta iner.
-let altaYapisik = true
+let altaYapisik = true, yeniMesajSayisi = 0
 $('mesajlar').addEventListener('scroll', () => {
   const k = $('mesajlar')
   if (k.clientHeight) altaYapisik = k.scrollHeight - k.scrollTop - k.clientHeight < 40
+  if (altaYapisik && yeniMesajSayisi) { yeniMesajSayisi = 0; yeniMesajGoster() }
 })
+function yeniMesajGoster() {
+  if (altaYapisik) yeniMesajSayisi = 0
+  $('yeniMesaj').classList.toggle('var', yeniMesajSayisi > 0)
+  $('yeniMesaj').querySelector('span').textContent = yeniMesajSayisi === 1 ? 'Yeni mesaj' : yeniMesajSayisi + ' yeni mesaj'
+}
+$('yeniMesaj').onclick = () => {
+  altaYapisik = true
+  $('mesajlar').scrollTop = 1e9
+  yeniMesajGoster()
+  $('mesaj').focus()
+}
 new ResizeObserver(() => { if (altaYapisik) $('mesajlar').scrollTop = 1e9 }).observe($('mesajlar'))
 
 // Yazıyı emojileri ayrı (büyük) gösterecek şekilde yerleştirir. Sadece emoji varsa

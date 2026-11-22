@@ -1,3 +1,4 @@
+mod bildirim;
 pub mod mikrofon;
 
 use std::sync::atomic::AtomicBool;
@@ -293,6 +294,10 @@ pub fn calistir() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let app = app.handle().clone();
+            // Bildirim penceresi açılamazsa uygulama yine çalışır (sadece bildirim çıkmaz).
+            if let Err(hata) = bildirim::olustur(&app) {
+                eprintln!("Bildirim penceresi açılamadı: {hata}");
+            }
             // Ayrı thread: denemeler arasında beklerken uygulamayı tutmaz. İnternet yoksa veya
             // GitHub'a ulaşılamazsa uygulama çalışmaya devam eder.
             thread::spawn(move || guncelleme_dongusu(app));
@@ -300,7 +305,7 @@ pub fn calistir() {
         });
     #[cfg(debug_assertions)]
     let builder = builder.on_page_load(|webview, yukleme| {
-        if matches!(yukleme.event(), tauri::webview::PageLoadEvent::Finished) {
+        if matches!(yukleme.event(), tauri::webview::PageLoadEvent::Finished) && webview.label() == "main" {
             let _ = webview.eval(KONSOL_BETIGI);
             // Otomatik test: SESAPP_TEST_BETIK verilirse o JS dosyası sayfada çalıştırılır
             // (giriş yapma, mesaj yazma, ekranı okuyup console.log ile terminale yazma).
@@ -313,7 +318,15 @@ pub fn calistir() {
     });
     builder
         .manage(Durum::default())
-        .invoke_handler(tauri::generate_handler![mikrofon_ac, mikrofon_kapat, mikrofonlar, gurultu_engelle, ses_kaydi, konsol])
+        // Bildirim penceresi hep açık durduğu için ana pencere kapanınca uygulama kendiliğinden
+        // kapanmazdı: ana pencere kapanınca uygulamadan çıkılır.
+        .on_window_event(|pencere, olay| {
+            if pencere.label() == "main" && matches!(olay, tauri::WindowEvent::Destroyed) {
+                tauri::Manager::app_handle(pencere).exit(0);
+            }
+        })
+        .invoke_handler(tauri::generate_handler![mikrofon_ac, mikrofon_kapat, mikrofonlar, gurultu_engelle, ses_kaydi, konsol,
+            bildirim::bildirim_goster, bildirim::bildirim_ac, bildirim::bildirim_kapat, bildirim::bildirim_tikla])
         .run(tauri::generate_context!())
         .expect("uygulama başlatılamadı");
 }
