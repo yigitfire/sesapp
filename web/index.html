@@ -655,6 +655,16 @@ function cal(tur) {
     for (const [oran, pay] of ust) ton(hz * oran, t, sure * .5, ses * pay)
   }
 }
+// Ses günlüğü: masaüstünde ses.log dosyasına (güncelleme.log ile aynı klasör), tarayıcıda
+// konsola. "Bazen duymuyorum" gibi ara sıra olan sorunlarda o an ne olduğu görülsün diye.
+function sesKaydi(...parca) {
+  const satir = parca.join(' ')
+  if (masaustu) window.__TAURI__.core.invoke('ses_kaydi', {satir}).catch(() => {})
+  else console.log('[ses]', satir)
+}
+const kimAdi = id => (profiller[id]?.isim || '?') + '#' + String(id).slice(0, 4)
+const yuvarla = v => v == null ? '-' : v.toFixed(3)
+
 // Odaya ilk girerken zaten seste olanlar için "girdi" sesi çalmasın diye ilk birkaç saniye susulur.
 let odaGirisi = 0
 const bildirimZamani = () => Date.now() - odaGirisi > 4000
@@ -723,6 +733,9 @@ async function katil(isim, oda) {
     ? {latencyHint: 'interactive', sampleRate: 48000}
     : {latencyHint: 'interactive'})
   sesKilidiniAc(ctx)
+  sesKaydi('odaya giriliyor; ses motoru', ctx.state, ctx.sampleRate + ' Hz', masaustu ? 'masaüstü' : 'web', navigator.platform)
+  ctx.addEventListener('statechange', () => sesKaydi('ses motoru durumu:', ctx.state))
+  navigator.mediaDevices?.addEventListener?.('devicechange', () => sesKaydi('ses cihazları değişti (kulaklık takıldı/çıkarıldı olabilir)'))
 
   // Ses zinciri bir kez kurulur. Giden akış hep bağlı kalır; mikrofon sese girince
   // bu zincire takılır, çıkınca sökülür (akış o sırada sessizlik taşır, neredeyse 0 veri).
@@ -938,6 +951,13 @@ async function katil(isim, oda) {
   room.onPeerStream((stream, {userId, peerId}) => {
     if (userId === benimId) return
     akislar.set(peerId, {userId, stream})
+    const kisa = peerId.slice(0, 4)
+    sesKaydi('akış geldi:', kimAdi(userId), 'bağlantı', kisa, 'iz', stream.getAudioTracks().length)
+    for (const iz of stream.getAudioTracks()) {
+      iz.addEventListener('mute', () => sesKaydi('iz sustu (veri gelmiyor):', kimAdi(userId), kisa))
+      iz.addEventListener('unmute', () => sesKaydi('iz yeniden veri alıyor:', kimAdi(userId), kisa))
+      iz.addEventListener('ended', () => sesKaydi('iz bitti:', kimAdi(userId), kisa))
+    }
     sesBagla(userId, stream)
   })
   // "Ses bağlı" sinyali: seste olanlarla bağlantının gecikmesi 5 saniyede bir ölçülür;
@@ -952,6 +972,7 @@ async function katil(isim, oda) {
   }, 5000)
 
   room.onPeerLeave(({peerId, userId}) => {
+    sesKaydi('bağlantı kapandı:', kimAdi(userId), peerId.slice(0, 4))
     const a = akislar.get(peerId)
     akislar.delete(peerId)
     const k = kisiler.get(userId)
@@ -960,6 +981,74 @@ async function katil(isim, oda) {
     const kalan = [...akislar.values()].findLast(x => x.userId === userId)
     if (kalan) sesBagla(userId, kalan.stream)
   })
+
+  // Ses bekçisi: seste olan herkesin sesi gerçekten çalınıyor mu, 3 saniyede bir bakar.
+  // Bozulmuşsa kendisi onarır ve ses.log'a yazar:
+  //  - ses motoru durmuşsa (uyku, cihaz değişimi) yeniden başlatır,
+  //  - kişinin sesi hiçbir bağlantıya takılı değilse ya da takılı bağlantı ölmüşse
+  //    canlı bağlantısına takar,
+  //  - WebRTC kişinin sesini alıyor (gelen seviye) ama bizim ses zincirine hiçbir şey
+  //    ulaşmıyorsa (duyulan seviye sıfır) sesi söküp yeniden takar.
+  // Dakikada bir de herkesin gelen/duyulan seviyesini özet olarak yazar.
+  let sonOzet = Date.now()
+  setInterval(() => {
+    if (!sesteyim) return
+    if (ctx.state !== 'running') {
+      sesKaydi('onarım: ses motoru', ctx.state, '-> yeniden başlatılıyor')
+      ctx.resume().catch(() => {})
+    }
+    // getPeers: {peerId: {userId, connection (RTCPeerConnection), ...}}
+    const pcler = Object.fromEntries(Object.entries(room.getPeers()).map(([p, b]) => [p, b?.connection]))
+    const ozetYaz = Date.now() - sonOzet > 60e3
+    const ozet = []
+    for (const [userId, k] of kisiler) {
+      if (!sesteMi(userId) || userId === benimId) continue
+      const ad = kimAdi(userId)
+      const baglar = [...akislar.entries()].filter(([, a]) => a.userId === userId)
+      if (!baglar.length) { if (ozetYaz) ozet.push(ad + ': akış yok'); continue }
+      const canli = ([p, a]) => a.stream.getAudioTracks()[0]?.readyState === 'live'
+        && !['failed', 'closed'].includes(pcler[p]?.connectionState)
+      const calan = baglar.find(([, a]) => a.stream === k.audio?.srcObject)
+      const enYeni = baglar.findLast(canli) || baglar.at(-1)
+      if (!calan || !canli(calan)) {
+        sesKaydi('onarım:', ad, calan ? 'çalan bağlantı ölmüş' : 'sesi hiçbir bağlantıya takılı değil', '-> takılıyor')
+        sesBagla(userId, enYeni[1].stream, true)
+        continue
+      }
+      const [peerId, {stream}] = calan
+      const iz = stream.getAudioTracks()[0]
+      // Çalan bağlantıdan veri gelmiyor ama aynı kişinin başka canlı bağlantısı varsa ona geç.
+      if (iz.muted && enYeni !== calan && !enYeni[1].stream.getAudioTracks()[0]?.muted) {
+        sesKaydi('onarım:', ad, 'çalan bağlantıdan veri gelmiyor -> diğer bağlantıya geçiliyor')
+        sesBagla(userId, enYeni[1].stream, true)
+        continue
+      }
+      const alici = pcler[peerId]?.getReceivers?.().find(r => r.track === iz)
+      const gelen = alici?.getSynchronizationSources?.()[0]?.audioLevel ?? null
+      k.gelenTepe = Math.max(k.gelenTepe || 0, gelen || 0)
+      if (gelen > .03 && (k.tepe3 || 0) < .001) k.sessizSay = (k.sessizSay || 0) + 1
+      else {
+        k.sessizSay = 0
+        if ((k.tepe3 || 0) >= .001 && k.onarimSayisi) { sesKaydi('düzeldi:', ad, 'sesi duyuluyor'); k.onarimSayisi = 0 }
+      }
+      k.tepe3 = 0
+      // Onarım işe yaramazsa denemeler arası giderek uzar (6 sn, 12, 24, ... en çok 1 dk).
+      if (k.sessizSay >= 2 && Date.now() >= (k.sonrakiOnarim || 0)) {
+        k.sessizSay = 0
+        k.onarimSayisi = (k.onarimSayisi || 0) + 1
+        k.sonrakiOnarim = Date.now() + Math.min(60e3, 6e3 * 2 ** (k.onarimSayisi - 1))
+        sesKaydi('onarım:', ad, 'sesi geliyor (' + yuvarla(gelen) + ') ama duyulmuyor -> yeniden takılıyor', '(' + k.onarimSayisi + '. deneme)')
+        sesBagla(userId, stream, true)
+        continue
+      }
+      if (ozetYaz) ozet.push(`${ad}: gelen ${yuvarla(k.gelenTepe)} duyulan ${yuvarla(k.tepe)} ${iz.muted ? 'veri yok' : 'veri var'} ${pcler[peerId]?.connectionState || '?'}`)
+    }
+    if (ozetYaz) {
+      sonOzet = Date.now()
+      for (const k of kisiler.values()) k.tepe = k.gelenTepe = 0
+      sesKaydi('özet; motor', ctx.state, '| ' + (ozet.join(' | ') || 'seste başka kimse yok'))
+    }
+  }, 3000)
 
   const gonder = () => {
     const t = $('mesaj').value.trim().slice(0, 2000)
@@ -1557,11 +1646,12 @@ function sesKilidiniAc(ctx) {
   setTimeout(guncelle, 500)
 }
 
-function sesBagla(userId, stream) {
+// zorla: aynı akış zaten takılıysa da söküp yeniden takar (ses bekçisi onarırken).
+function sesBagla(userId, stream, zorla) {
   kisiEkle(userId)
   const k = kisiler.get(userId)
   // Aynı kişiden yeni bağlantıyla yeni akış geldiyse eskisini sök (yeniden açılınca olur).
-  if (k.audio?.srcObject === stream) return
+  if (k.audio?.srcObject === stream && !zorla) return
   sesiSok(k)
   const a = new Audio()
   a.srcObject = stream
@@ -1573,12 +1663,19 @@ function sesBagla(userId, stream) {
   kaynak.connect(k.gain)
   kaynak.connect(analiz)
   k.kaynak = kaynak
-  k.izlemeyiDurdur = seviyeIzle(analiz, konusmaIzle(k.el))
+  // Duyulan seviyenin tepesi tutulur: ses bekçisi "geliyor ama duyulmuyor" durumunu buna bakarak anlar.
+  const konusma = konusmaIzle(k.el)
+  k.izlemeyiDurdur = seviyeIzle(analiz, v => {
+    k.tepe = Math.max(k.tepe || 0, v)
+    k.tepe3 = Math.max(k.tepe3 || 0, v)
+    konusma(v)
+  })
 }
 
 function kisiSil(userId) {
   const k = kisiler.get(userId)
   if (!k) return
+  sesKaydi('kişi kaldırıldı:', kimAdi(userId))
   sesiSok(k)
   k.gain.disconnect()
   k.el.remove()

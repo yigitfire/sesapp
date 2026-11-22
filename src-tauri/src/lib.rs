@@ -239,16 +239,28 @@ async fn guncelle(app: &tauri::AppHandle) -> tauri_plugin_updater::Result<Option
 /// Windows'ta %LOCALAPPDATA%\io.github.yigitfire.sesapp\logs\guncelleme.log.
 /// 100 KB'ı geçince baştan başlar. Kişisel bilgi yazılmaz.
 fn guncelleme_kaydi(app: &tauri::AppHandle, satir: &str) {
+    eprintln!("Güncelleme: {satir}");
+    gunluge_yaz(app, "guncelleme.log", satir);
+}
+
+/// Ses günlüğü (ses.log, güncelleme günlüğüyle aynı klasörde): kimin sesinin gelip
+/// gelmediği, bağlantı olayları ve kendini onarma adımları. "Bazen duymuyorum" gibi
+/// ara sıra olan sorunlarda o anda ne olduğu sonradan görülsün diye.
+#[tauri::command]
+fn ses_kaydi(app: tauri::AppHandle, satir: String) {
+    gunluge_yaz(&app, "ses.log", &satir.chars().take(2000).collect::<String>());
+}
+
+fn gunluge_yaz(app: &tauri::AppHandle, ad: &str, satir: &str) {
     use std::io::Write;
     use tauri::Manager;
 
     let surum = &app.package_info().version;
-    eprintln!("Güncelleme: {satir}");
     let Ok(klasor) = app.path().app_log_dir() else {
         return;
     };
     let _ = std::fs::create_dir_all(&klasor);
-    let yol = klasor.join("guncelleme.log");
+    let yol = klasor.join(ad);
     if std::fs::metadata(&yol).is_ok_and(|m| m.len() > 100_000) {
         let _ = std::fs::remove_file(&yol);
     }
@@ -301,7 +313,7 @@ pub fn calistir() {
     });
     builder
         .manage(Durum::default())
-        .invoke_handler(tauri::generate_handler![mikrofon_ac, mikrofon_kapat, mikrofonlar, gurultu_engelle, konsol])
+        .invoke_handler(tauri::generate_handler![mikrofon_ac, mikrofon_kapat, mikrofonlar, gurultu_engelle, ses_kaydi, konsol])
         .run(tauri::generate_context!())
         .expect("uygulama başlatılamadı");
 }
