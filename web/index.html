@@ -24,6 +24,10 @@
   ::placeholder{color:var(--soluk)}
   button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 
+  /* Simge çizimlerinin durduğu kutu. Gizleme burada yapılır, HTML'deki style="" ile değil:
+     Tauri, Windows'ta satır içi stilleri güvenlik politikası (CSP) yüzünden engelliyor; o zaman
+     kutu gizlenmiyor ve varsayılan 300x150 boyutuyla soldan 300 px yer kaplıyordu. */
+  #simgeler{display:none}
   /* Simgeler: aşağıdaki <symbol>'lerden çizilir, rengi yazı renginden alır. */
   .i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
   .ib{width:32px;height:32px;flex:none;display:grid;place-items:center;border-radius:6px;color:var(--soluk)}
@@ -54,7 +58,7 @@
   .kisi:hover{background:var(--bg3)}
   .ust{display:flex;align-items:center;gap:10px}
   .av{width:32px;height:32px;flex:none;border-radius:50%;display:grid;place-items:center;
-      font-size:14px;font-weight:600;color:#111;transition:box-shadow .1s}
+      font-size:14px;font-weight:600;color:#111;transition:box-shadow .1s;background-size:cover;background-position:center}
   .konusuyor .av{box-shadow:0 0 0 2px var(--yesil)}
   .ad{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ses{display:none;align-items:center;gap:8px;margin-top:6px;padding-left:2px}
@@ -104,8 +108,10 @@
   /* Sağ: sohbet */
   #sag{flex:1;min-width:0;display:flex;flex-direction:column}
   #mesajlar{flex:1;overflow:auto;padding:16px 20px 8px;user-select:text;-webkit-user-select:text}
-  .msj{padding:1px 0;overflow-wrap:anywhere}
-  .msj.bas{margin-top:14px}
+  /* Mesajlar: grubun ilk mesajında solda kişinin yuvarlağı, devamı aynı hizada. */
+  .msj{position:relative;padding:1px 0 1px 46px;overflow-wrap:anywhere}
+  .msj .av{position:absolute;left:0;top:3px;width:34px;height:34px}
+  .msj.bas{margin-top:14px;min-height:38px}
   .msj.bas:first-child{margin-top:0}
   .msj .kim{display:flex;align-items:baseline;gap:8px}
   .msj .kim b{font-weight:600}
@@ -132,6 +138,13 @@
   .anahtar input::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s}
   .anahtar input:checked{background:var(--yesil)}
   .anahtar input:checked::after{transform:translateX(14px)}
+  .profil{display:flex;align-items:center;gap:12px}
+  #fotoOnizleme{width:52px;height:52px;font-size:20px;cursor:pointer;position:relative}
+  #fotoOnizleme:hover::after{content:'';position:absolute;inset:0;border-radius:50%;background:#0005}
+  .profil .yazi{display:flex;flex-direction:column;gap:2px;font-size:13px;color:var(--soluk)}
+  .profil .yazi button{align-self:flex-start;font-size:13px;color:var(--kirmizi)}
+  #fotoHata{color:var(--kirmizi)}
+  #fotoHata:empty{display:none}
   #odadanCik{width:100%;margin-top:18px;padding:9px;border-radius:8px;font-size:14px;color:var(--kirmizi);background:var(--bg3)}
   #odadanCik:hover{background:var(--bg4)}
 
@@ -146,7 +159,7 @@
 </head>
 <body>
 <!-- Simge çizimleri: Lucide (ISC lisansı, lucide.dev) -->
-<svg style="display:none">
+<svg id="simgeler" aria-hidden="true">
   <symbol id="i-dalga" viewBox="0 0 24 24"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></symbol>
   <symbol id="i-ok" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
   <symbol id="i-mik" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></symbol>
@@ -208,6 +221,16 @@
 <div id="ayarlar">
   <div class="kart">
     <div class="ust"><h2>Ayarlar</h2><button class="ib k" id="ayarKapat" title="Kapat"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <h3>Profil fotoğrafı</h3>
+    <div class="profil">
+      <button class="av" id="fotoOnizleme" title="Fotoğraf seç"></button>
+      <div class="yazi">
+        <span>Değiştirmek için tıkla</span>
+        <button id="fotoKaldir">Kaldır</button>
+        <span id="fotoHata"></span>
+      </div>
+      <input type="file" id="fotoDosya" accept="image/*" hidden>
+    </div>
     <h3>Tema</h3>
     <div class="bolmeli" id="temaSec"><button data-tema="koyu">Koyu</button><button data-tema="acik">Açık</button></div>
     <h3>Bildirim sesleri</h3>
@@ -409,7 +432,8 @@ async function katil(isim, oda) {
 
   benimId = (await room.getSelf()).userId
   const benimRenk = gecerliRenk(localStorage.getItem('renk')) || varsayilanRenk(benimId)
-  profilGuncelle(benimId, {isim, renk: benimRenk, g: Date.now()}, true)
+  // Kayıtlı fotoğraf da korunur (yoksa her açılışta silinirdi).
+  profilGuncelle(benimId, {isim, renk: benimRenk, foto: profiller[benimId]?.foto, g: Date.now()}, true)
 
   gecmisAnahtari = 'gecmis:' + oda
   gecmis = oku(gecmisAnahtari, []).filter(gecerliMesaj)
@@ -519,6 +543,21 @@ async function katil(isim, oda) {
     $('renkler').appendChild(b)
   }
   $('benAv').onclick = e => { e.stopPropagation(); $('renkler').classList.toggle('acik') }
+
+  // Profil fotoğrafı (Ayarlar): seç, küçült, profille herkese yay.
+  $('fotoOnizleme').onclick = () => $('fotoDosya').click()
+  $('fotoDosya').onchange = async () => {
+    const dosya = $('fotoDosya').files[0]
+    $('fotoDosya').value = ''
+    if (!dosya) return
+    $('fotoHata').textContent = ''
+    try {
+      benimProfilimiYay({foto: await fotoHazirla(dosya)})
+    } catch {
+      $('fotoHata').textContent = 'Bu resim açılamadı'
+    }
+  }
+  $('fotoKaldir').onclick = () => benimProfilimiYay({foto: ''})
   document.addEventListener('pointerdown', e => {
     if (!$('renkler').contains(e.target) && e.target !== $('benAv')) $('renkler').classList.remove('acik')
   })
@@ -593,19 +632,54 @@ function benimProfilimiYay(degisen) {
 
 function benimKartimiCiz() {
   const renk = renkAl(benimId)
-  $('benAv').style.background = renk
-  $('benAv').textContent = basHarf(benimId)
+  avatarCiz($('benAv'), benimId)
+  avatarCiz($('fotoOnizleme'), benimId)
+  $('fotoKaldir').style.display = profiller[benimId]?.foto ? '' : 'none'
   for (const b of $('renkler').children) b.classList.toggle('secili', b.dataset.renk === renk)
+}
+
+// Yuvarlak: fotoğrafı varsa fotoğraf, yoksa renkli zemin üstünde baş harf.
+function avatarCiz(el, id) {
+  const foto = profiller[id]?.foto
+  el.style.backgroundColor = renkAl(id)
+  el.style.backgroundImage = foto ? `url("${foto}")` : ''
+  el.textContent = foto ? '' : basHarf(id)
+}
+
+// Profil fotoğrafı: sadece küçük JPEG kabul edilir (başkasından gelen veri CSS'e yazıldığı
+// için içerik sıkı kontrol edilir; sadece base64 karakterleri).
+const FOTO_MAX = 40000
+const gecerliFoto = f => typeof f === 'string' && f.length <= FOTO_MAX &&
+  /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(f) ? f : ''
+
+// Seçilen resmi ortadan kare kırpıp 128x128 JPEG'e küçültür (~5-10 KB).
+// Küçük olduğu için profille birlikte herkese anında gider ve cihazda saklanır.
+async function fotoHazirla(dosya) {
+  const resim = await createImageBitmap(dosya)
+  const kenar = Math.min(resim.width, resim.height)
+  const tuval = document.createElement('canvas')
+  tuval.width = tuval.height = 128
+  const c = tuval.getContext('2d')
+  c.imageSmoothingQuality = 'high'
+  c.drawImage(resim, (resim.width - kenar) / 2, (resim.height - kenar) / 2, kenar, kenar, 0, 0, 128, 128)
+  resim.close()
+  for (const kalite of [.85, .7, .5]) {
+    const veri = tuval.toDataURL('image/jpeg', kalite)
+    if (gecerliFoto(veri)) return veri
+  }
+  throw new Error('çok büyük')
 }
 
 // Profil kaydını günceller. kesin=true: doğrulanmış kaynak (kişinin kendisi);
 // kesin=false: başkasından duyulan, sadece daha yeniyse alınır.
 function profilGuncelle(id, p, kesin) {
   if (!p || typeof p.isim !== 'string' || !p.isim.trim()) return
-  const yeni = {isim: p.isim.trim().slice(0, 24), renk: gecerliRenk(p.renk) || varsayilanRenk(id), g: Number(p.g) || 0}
+  const yeni = {isim: p.isim.trim().slice(0, 24), renk: gecerliRenk(p.renk) || varsayilanRenk(id),
+                foto: gecerliFoto(p.foto), g: Number(p.g) || 0}
   const eski = profiller[id]
   if (!kesin && eski && eski.g >= yeni.g) return
-  if (eski && eski.isim === yeni.isim && eski.renk === yeni.renk && eski.g === yeni.g) return
+  if (eski && eski.isim === yeni.isim && eski.renk === yeni.renk && (eski.foto || '') === yeni.foto &&
+      eski.g === yeni.g) return
   profiller[id] = yeni
   kaydet('profiller', profiller)
   kisiGuncelle(id)
@@ -701,9 +775,7 @@ function kisiGuncelle(userId) {
   k.el.title = sesteMi(userId) ? '' : 'Seste değil, sadece sohbette'
   if (!profiller[userId]) return
   k.el.querySelector('.ad').textContent = isimAl(userId)
-  const av = k.el.querySelector('.av')
-  av.textContent = basHarf(userId)
-  av.style.background = renkAl(userId)
+  avatarCiz(k.el.querySelector('.av'), userId)
 }
 
 // Tarayıcılar, kullanıcı bir yere tıklamadan sesi başlatmayabilir (otomatik girişte
@@ -777,6 +849,10 @@ function mesajlariCiz() {
     onceki = m
     if (!ayniGrup) {
       d.classList.add('bas')
+      const av = document.createElement('span')
+      av.className = 'av'
+      avatarCiz(av, m.u)
+      d.append(av)
       const kim = document.createElement('div')
       kim.className = 'kim'
       const b = document.createElement('b')
