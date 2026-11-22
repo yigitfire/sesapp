@@ -152,8 +152,39 @@ const KONSOL_BETIGI: &str = r#"
 })();
 "#;
 
+/// Açılışta GitHub'daki latest.json'a bakar; yeni sürüm varsa indirir, imzasını
+/// (bizim gizli anahtarımızla imzalanmış mı) doğrular, kurar ve uygulamayı yeniden başlatır.
+/// Windows'ta kurulum dosyası "passive" modda çalışır (sadece ilerleme çubuğu).
+/// Geliştirme sürümünde çalışmaz, yoksa test sırasında kendini güncellerdi.
+async fn guncelle(app: tauri::AppHandle) -> tauri_plugin_updater::Result<()> {
+    use tauri::Emitter;
+    use tauri_plugin_updater::UpdaterExt;
+
+    if cfg!(debug_assertions) {
+        return Ok(());
+    }
+    if let Some(surum) = app.updater()?.check().await? {
+        // Arayüz "güncelleniyor" yazsın; kişi neden yeniden başladığını anlasın.
+        let _ = app.emit("guncelleme", surum.version.clone());
+        surum.download_and_install(|_, _| {}, || {}).await?;
+        app.restart();
+    }
+    Ok(())
+}
+
 pub fn calistir() {
-    let builder = tauri::Builder::default();
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .setup(|app| {
+            let app = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                // İnternet yoksa veya GitHub'a ulaşılamazsa sessizce geçilir; uygulama çalışmaya devam eder.
+                if let Err(e) = guncelle(app).await {
+                    eprintln!("Güncelleme kontrolü başarısız: {e}");
+                }
+            });
+            Ok(())
+        });
     #[cfg(debug_assertions)]
     let builder = builder.on_page_load(|webview, yukleme| {
         if matches!(yukleme.event(), tauri::webview::PageLoadEvent::Finished) {

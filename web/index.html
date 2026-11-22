@@ -21,6 +21,7 @@
   .renkler button{width:18px;height:18px;padding:0;border-radius:50%;border:2px solid transparent}
   .renkler button.secili{border-color:#fff}
   .kisi .ad{font-weight:bold}
+  #guncelleme{display:none;position:fixed;top:0;left:0;right:0;padding:8px;text-align:center;background:#3b6cf6;color:#fff;font-size:13px;z-index:9}
   #yaz{display:flex;gap:6px;padding:10px;border-top:1px solid #2a2d35}
   #yaz input{flex:1}
   .kisi{background:#1d2026;padding:8px;border-radius:6px;font-size:13px}
@@ -32,6 +33,7 @@
 </style>
 </head>
 <body>
+<div id="guncelleme"></div>
 
 <div id="giris">
   <input id="isim" placeholder="Adın">
@@ -98,6 +100,12 @@ const renkAl = id => gecerliRenk(profiller[id]?.renk) || varsayilanRenk(id)
 
 $('isim').value = localStorage.getItem('isim') || ''
 $('oda').value = localStorage.getItem('oda') || ''
+
+// Masaüstünde yeni sürüm bulunursa Rust bunu bildirir; kurulup yeniden başlarken uyarı göster.
+if (masaustu) window.__TAURI__.event.listen('guncelleme', e => {
+  $('guncelleme').textContent = `Yeni sürüm (${e.payload}) kuruluyor, uygulama birazdan yeniden açılacak...`
+  $('guncelleme').style.display = 'block'
+})
 
 $('katil').onclick = () => {
   const isim = $('isim').value.trim().slice(0, 24)
