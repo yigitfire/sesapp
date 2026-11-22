@@ -152,6 +152,20 @@
   #ben{--halkaArka:var(--alt)}
   .ad{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ses{display:none;align-items:center;gap:8px;margin-top:6px;padding-left:2px}
+  /* Kişi başı hassasiyet satırı: soldaki küçük etiket + kaydırıcı + değer. */
+  .ses.hassas .etiket{font-size:11px;color:var(--soluk);width:62px;flex:none}
+  .ses.hassas .yuzde{width:44px}
+  /* Giriş hassasiyeti: canlı ses seviyesi çubuğu ve üstünde eşik kaydırıcısı. Çizginin sağı
+     (eşiğin üstü) yeşil yanar = ses gidiyor. */
+  #hassasCubuk{position:relative;height:18px;margin-top:8px}
+  #hassasCubuk .iz{position:absolute;left:0;right:0;top:7px;height:4px;border-radius:2px;background:var(--bg4);overflow:hidden}
+  #hassasCubuk .iz i{display:block;height:100%;width:0;background:var(--soluk)}
+  #hassasCubuk.gecti .iz i{background:var(--vurgu)}
+  #hassasCubuk input{position:absolute;inset:0;width:100%;height:18px;background:none}
+  #hassasCubuk input::-webkit-slider-thumb{width:4px;height:16px;border-radius:2px;background:var(--bas)}
+  #hassasKutu small{display:block;margin-top:6px;font-size:11px;line-height:1.35;color:var(--soluk)}
+  #hassasKutu[hidden]{display:none}
+  #hassasDeger{float:right;font-variant-numeric:tabular-nums}
   /* Arkadaşın kaydırıcısı üstüne gelince açılır. */
   .kisi:hover .ses{display:flex}
   .yuzde{width:30px;text-align:right;font-size:12px;color:var(--soluk);font-variant-numeric:tabular-nums}
@@ -497,6 +511,12 @@
         <h4>Giriş ses seviyesi</h4>
         <div class="seviye"><input type="range" id="micGain" min="0" max="200" value="100"><span class="yuzde" id="micYuzde">100</span></div>
         <div class="bar" title="Mikrofonun şu anki sesi"><i id="micBar"></i></div>
+        <div class="ayrac"></div>
+        <label class="anahtar" title="Sesin belli bir seviyenin altındayken hiç gönderilmez: konuşmuyorken yankı, fan, klavye sesi gitmez.">Giriş hassasiyeti<input type="checkbox" id="hassasAcik"></label>
+        <div id="hassasKutu" hidden>
+          <div id="hassasCubuk" title="Çizgiyi sürükle: solundaki (daha kısık) sesler gönderilmez"><div class="iz"><i id="hassasSeviye"></i></div><input type="range" id="hassasEsik" min="-80" max="-10" step="1" value="-50"></div>
+          <small>Konuşunca çubuk yeşil yanıyorsa sesin gidiyor. Çizgiyi, konuşmanın biraz altına, yankının/arka plan sesinin üstüne koy. <span id="hassasDeger"></span></small>
+        </div>
       </div>
       <div class="menu" id="kulakMenu">
         <h4>Çıkış ses seviyesi</h4>
@@ -725,7 +745,7 @@ const basHarf = id => [...isimAl(id)][0].toLocaleUpperCase('tr-TR')
 // Simge düğmesinin içini değiştirir (ör. mikrofon açık/kapalı).
 const simge = (el, ad) => el.innerHTML = `<svg class="i"><use href="#i-${ad}"/></svg>`
 // Kaydırıcının dolu kısmını boyar (CSS --p değişkeni).
-const boya = r => r.style.setProperty('--p', r.value / r.max * 100 + '%')
+const boya = r => r.style.setProperty('--p', (r.value - (Number(r.min) || 0)) / (r.max - (Number(r.min) || 0)) * 100 + '%')
 const durum = (metin, hata = true) => { $('hata').textContent = metin; $('hata').classList.toggle('hata', hata) }
 
 // ---- Ayarlar: tema + bildirim sesleri (bu cihazda saklanır) ----
@@ -983,6 +1003,8 @@ async function katil(isim, oda) {
   sesKilidiniAc(ctx)
   sesKaydi('odaya giriliyor; ses motoru', ctx.state, ctx.sampleRate + ' Hz', masaustu ? 'masaüstü' : 'web', navigator.platform)
   ctx.addEventListener('statechange', () => sesKaydi('ses motoru durumu:', ctx.state))
+  try { await ctx.audioWorklet.addModule('kapi-worklet.js'); kapiHazir = true }
+  catch (e) { sesKaydi('ses kapısı yüklenemedi:', e?.message || e) }
   navigator.mediaDevices?.addEventListener?.('devicechange', () => sesKaydi('ses cihazları değişti (kulaklık takıldı/çıkarıldı olabilir)'))
 
   // Ses zinciri bir kez kurulur. Giden akış hep bağlı kalır; mikrofon sese girince
@@ -1007,7 +1029,24 @@ async function katil(isim, oda) {
   sinirla.oversample = '2x'
   micGain.connect(yariya).connect(sinirla)
   sinirla.connect(micAnaliz)
-  sinirla.connect(cikis)
+  // Giriş hassasiyeti: sınırlayıcıdan sonra kapı. Seviye çubuğu kapıdan önce ölçer (eşiği
+  // ayarlarken sesini görebilsin), konuşma halkası kapıdan sonra (sadece giden ses yakar).
+  micKapi = kapiOlustur()
+  const gidenAnaliz = ctx.createAnalyser()
+  if (micKapi) sinirla.connect(micKapi).connect(cikis)
+  else sinirla.connect(cikis)
+  ;(micKapi || sinirla).connect(gidenAnaliz)
+  girisHassasiyetiUygula()
+  $('hassasAcik').onchange = () => {
+    girisHassasiyeti.acik = $('hassasAcik').checked
+    kaydet('girisHassasiyeti', girisHassasiyeti)
+    girisHassasiyetiUygula()
+  }
+  $('hassasEsik').oninput = () => {
+    girisHassasiyeti.esik = Number($('hassasEsik').value)
+    kaydet('girisHassasiyeti', girisHassasiyeti)
+    girisHassasiyetiUygula()
+  }
   const gidenSes = cikis.stream
   // Herkesin sesi bu ana düğümden hoparlöre gider; seste değilken kısılır (0).
   dinleme = ctx.createGain()
@@ -1030,6 +1069,13 @@ async function katil(isim, oda) {
   const benHalka = konusmaIzle($('ben')), odadaHalka = konusmaIzle($('benOdada'))
   seviyeIzle(micAnaliz, v => {
     $('micBar').style.width = Math.min(100, v * 300) + '%'
+    if (girisHassasiyeti.acik) {
+      const db = sesDb(v)
+      $('hassasSeviye').style.width = Math.max(0, Math.min(100, (db - HASSAS_EN_AZ) / (-10 - HASSAS_EN_AZ) * 100)) + '%'
+      $('hassasCubuk').classList.toggle('gecti', db > girisHassasiyeti.esik)
+    }
+  })
+  seviyeIzle(gidenAnaliz, v => {
     benHalka(v)
     odadaHalka(v)
   })
@@ -1932,6 +1978,31 @@ async function tarayiciMikrofon(ctx) {
   return ctx.createMediaStreamSource(mic)
 }
 
+// Ses kapısı (hassasiyet, kapi-worklet.js): eşik dB, -100 = kapalı (ses hep geçer).
+// Yüklenemezse (çok eski sistem) kapı olmadan devam edilir.
+let kapiHazir = false
+const KAPI_KAPALI = -100, HASSAS_EN_AZ = -80
+function kapiOlustur(esik = KAPI_KAPALI) {
+  if (!kapiHazir) return null
+  try {
+    const d = new AudioWorkletNode(ctx, 'ses-kapisi')
+    d.parameters.get('esik').value = esik
+    return d
+  } catch (e) { sesKaydi('ses kapısı kurulamadı:', e?.message || e); return null }
+}
+const sesDb = v => 20 * Math.log10(Math.max(v, 1e-6))
+// Giriş hassasiyeti (giden ses), bu cihazda: {acik, esik (dB)}.
+const girisHassasiyeti = {acik: false, esik: -50, ...oku('girisHassasiyeti', {})}
+girisHassasiyeti.esik = Math.min(-10, Math.max(HASSAS_EN_AZ, Number(girisHassasiyeti.esik) || -50))
+let micKapi = null
+function girisHassasiyetiUygula() {
+  micKapi?.parameters.get('esik').setValueAtTime(girisHassasiyeti.acik ? girisHassasiyeti.esik : KAPI_KAPALI, ctx.currentTime)
+  $('hassasAcik').checked = girisHassasiyeti.acik
+  $('hassasKutu').hidden = !girisHassasiyeti.acik
+  $('hassasEsik').value = girisHassasiyeti.esik
+  $('hassasDeger').textContent = girisHassasiyeti.esik + ' dB'
+}
+
 // Masaüstünde: mikrofonu Rust açar (cpal + RNNoise), 10 ms'lik paketleri Channel ile
 // yollar; worklet bunları Web Audio akışına çevirir. Tarayıcı motoru mikrofona hiç
 // dokunmadığı için Windows/Mac "görüşme modu"na geçmez, oyun sesi kısılmaz.
@@ -1957,16 +2028,26 @@ function kisiEkle(userId) {
   el.className = 'kisi'
   el.innerHTML = `<div class="ust"><span class="av"></span><span class="ad">...</span>
       <button class="ib k sus"></button></div>
-    <div class="ses"><input type="range" min="0" max="200"><span class="yuzde"></span></div>`
+    <div class="ses"><input type="range" min="0" max="200"><span class="yuzde"></span></div>
+    <div class="ses hassas" title="Bu kişinin sesi bu seviyenin altındayken sana çalmaz (yankısı, arka plan sesi). En solda kapalı."><span class="etiket">Hassasiyet</span><input type="range" min="-80" max="-10" step="1"><span class="yuzde"></span></div>`
   $('kisiler').appendChild(el)
   const gain = ctx.createGain()
   gain.connect(dinleme)
+  // Kişi başı hassasiyet: gelen ses önce bu kapıdan geçer (ses bekçisi kapıdan önce ölçer).
+  const kapi = kapiOlustur()
+  kapi?.connect(gain)
+  const hassas = el.querySelector('.hassas input'), hassasYazi = el.querySelector('.hassas .yuzde')
   const kaydirici = el.querySelector('input'), sus = el.querySelector('.sus')
 
   // Kayıtlı ayar varsa onunla başla. Sustur kaydırıcıyı değiştirmez; açınca eski seviyeye döner.
-  const ayar = {v: 100, s: false, ...sesler[userId]}
+  const ayar = {v: 100, s: false, h: null, ...sesler[userId]}
   const uygula = () => {
     gain.gain.value = ayar.s ? 0 : ayar.v / 100
+    const h = Number.isFinite(ayar.h) && ayar.h > HASSAS_EN_AZ ? Math.min(-10, ayar.h) : null
+    kapi?.parameters.get('esik').setValueAtTime(h ?? KAPI_KAPALI, ctx.currentTime)
+    hassas.value = h ?? HASSAS_EN_AZ
+    boya(hassas)
+    hassasYazi.textContent = h == null ? 'kapalı' : h + ' dB'
     kaydirici.value = ayar.v
     boya(kaydirici)
     el.querySelector('.yuzde').textContent = ayar.v
@@ -1974,13 +2055,14 @@ function kisiEkle(userId) {
     simge(sus, ayar.s ? 'hop-yok' : 'hop')
     sus.title = ayar.s ? 'Sesini aç' : 'Sustur'
   }
-  const sakla = () => { sesler[userId] = {v: ayar.v, s: ayar.s}; kaydet('sesler', sesler); uygula() }
+  const sakla = () => { sesler[userId] = {v: ayar.v, s: ayar.s, h: ayar.h}; kaydet('sesler', sesler); uygula() }
+  hassas.oninput = () => { const v = Number(hassas.value); ayar.h = v > HASSAS_EN_AZ ? v : null; sakla() }
   // Kaydırıcıyı oynatmak susturmayı da kaldırır (sesini duymak istediği belli).
   kaydirici.oninput = () => { ayar.v = Number(kaydirici.value); ayar.s = false; sakla() }
   sus.onclick = () => { ayar.s = !ayar.s; sakla() }
   uygula()
 
-  kisiler.set(userId, {el, gain})
+  kisiler.set(userId, {el, gain, kapi})
   kisiGuncelle(userId)
   gorundu(userId)
   return el
@@ -2089,7 +2171,7 @@ function sesBagla(userId, stream, zorla) {
   k.audio = a
   const kaynak = ctx.createMediaStreamSource(stream)
   const analiz = ctx.createAnalyser()
-  kaynak.connect(k.gain)
+  kaynak.connect(k.kapi || k.gain)
   kaynak.connect(analiz)
   k.kaynak = kaynak
   // Duyulan seviyenin tepesi tutulur: ses bekçisi "geliyor ama duyulmuyor" durumunu buna bakarak anlar.
@@ -2107,6 +2189,7 @@ function kisiSil(userId) {
   sesKaydi('kişi kaldırıldı:', kimAdi(userId))
   sesiSok(k)
   k.gain.disconnect()
+  k.kapi?.disconnect()
   k.el.remove()
   kisiler.delete(userId)
   gorundu(userId)  // çıktığı an = en son görüldüğü an
