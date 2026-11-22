@@ -328,6 +328,7 @@
 
 <div id="giris">
   <div id="logo"><img src="logo.svg" alt="Monke"></div>
+  <input id="davet" placeholder="Davet kodu" autocomplete="off" spellcheck="false" hidden>
   <div class="satir">
     <input id="isim" placeholder="Adın" maxlength="24">
     <button id="katil" title="Katıl"><svg class="i"><use href="#i-ok"/></svg></button>
@@ -658,8 +659,18 @@ function cal(tur) {
 let odaGirisi = 0
 const bildirimZamani = () => Date.now() - odaGirisi > 4000
 
-// Şimdilik tek oda var: uygulamayı açan herkes buraya bağlanır (eskiden herkesin yazdığı "15").
-const ODA = '15'
+// Tek oda var ve anahtarı gizli bir davet kodu (kodun kendisi burada yazmaz; depo herkese
+// açık). Her kişi kodu bir kere yapıştırır, sonra uygulama hep doğrudan bağlanır.
+// Burada sadece kodun özeti var: yanlış kodu hemen söyleyebilmek için. 20 rastgele
+// karakterlik (100 bit) kod özetten geri bulunamaz.
+const DAVET_OZETI = '28f486aba37012145462fdf89647cd814562172a952b46f05cabaf9c19156d0d'
+// Büyük/küçük harf, boşluk, tire ve baştaki "MONKE" fark etmez.
+const davetTemizle = k => String(k || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^MONKE/, '')
+async function davetGecerli(kod) {
+  if (kod.length !== 20) return false
+  const ozet = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('yigit-ses-app-2026:' + kod))
+  return [...new Uint8Array(ozet)].map(b => b.toString(16).padStart(2, '0')).join('') === DAVET_OZETI
+}
 $('isim').value = localStorage.getItem('isim') || ''
 
 // Masaüstünde yeni sürüm bulunursa Rust bunu bildirir; kurulup yeniden başlarken uyarı göster.
@@ -668,21 +679,38 @@ if (masaustu) window.__TAURI__.event.listen('guncelleme', e => {
   $('guncelleme').style.display = 'block'
 })
 
-$('katil').onclick = () => {
+$('katil').onclick = async () => {
   const isim = $('isim').value.trim().slice(0, 24)
-  if (!isim) { durum('Adını yaz'); return }
+  const kod = davetTemizle($('davet').hidden ? localStorage.getItem('davet') : $('davet').value)
+  if (!await davetGecerli(kod)) {
+    $('davet').hidden = false
+    $('davet').focus()
+    durum(kod ? 'Davet kodu yanlış' : 'Davet kodunu yapıştır')
+    return
+  }
+  if (!isim) { $('isim').focus(); durum('Adını yaz'); return }
   localStorage.setItem('isim', isim)
+  localStorage.setItem('davet', kod)
   sessionStorage.removeItem('cikti')
-  katil(isim, ODA)
+  durum('Bağlanıyor...', false)
+  katil(isim, kod)
 }
 // Buton sadece simge olduğu için Enter da giriş yapar.
-$('isim').onkeydown = e => { if (e.key === 'Enter') $('katil').click() }
+$('isim').onkeydown = $('davet').onkeydown = e => { if (e.key === 'Enter') $('katil').click() }
 
-// Otomatik giriş: daha önce girilmişse doğrudan odaya bağlan. "Çık"a basılan oturumda
+// Otomatik giriş: kod ve isim kayıtlıysa doğrudan odaya bağlan. "Çık"a basılan oturumda
 // (sayfa yenilense bile) otomatik girme; uygulama kapatılıp açılınca yine otomatik girer.
-if ($('isim').value && !sessionStorage.getItem('cikti')) {
-  durum('Bağlanıyor...', false)
-  katil($('isim').value, ODA)
+// Kod yoksa (ilk açılış) davet kutusu görünür.
+{
+  const kod = davetTemizle(localStorage.getItem('davet'))
+  davetGecerli(kod).then(gecerli => {
+    $('davet').hidden = gecerli
+    if (!gecerli) ($('isim').value ? $('davet') : $('isim')).focus()
+    else if ($('isim').value && !sessionStorage.getItem('cikti')) {
+      durum('Bağlanıyor...', false)
+      katil($('isim').value, kod)
+    }
+  })
 }
 
 async function katil(isim, oda) {
@@ -742,10 +770,16 @@ async function katil(isim, oda) {
   // Kayıtlı fotoğraf da korunur (yoksa her açılışta silinirdi).
   profilGuncelle(benimId, {isim, renk: benimRenk, foto: profiller[benimId]?.foto, g: Date.now()}, true)
 
-  gecmisAnahtari = 'gecmis:' + oda
+  // Geçmiş ve üyeler cihazda "monke" adıyla saklanır (davet kodu anahtar adına yazılmasın).
+  // İlk açılışta eski "15" odasının kayıtları buraya kopyalanır; eskiler silinmez.
+  for (const tur of ['gecmis', 'uyeler']) {
+    const eski = localStorage.getItem(tur + ':15')
+    if (localStorage.getItem(tur + ':monke') === null && eski !== null) localStorage.setItem(tur + ':monke', eski)
+  }
+  gecmisAnahtari = 'gecmis:monke'
   gecmis = oku(gecmisAnahtari, []).map(mesajTemizle).filter(gecerliMesaj)
   mesajlariCiz()
-  uyeAnahtari = 'uyeler:' + oda
+  uyeAnahtari = 'uyeler:monke'
   uyeler = oku(uyeAnahtari, {})
   gorundu(benimId)
   // Dakikada bir: açık olanların "son görülme"si yenilenir (biz kapanınca en son hâli kalır)
