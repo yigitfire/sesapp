@@ -59,7 +59,11 @@
   .ust{display:flex;align-items:center;gap:10px}
   .av{width:32px;height:32px;flex:none;border-radius:50%;display:grid;place-items:center;
       font-size:14px;font-weight:600;color:#111;transition:box-shadow .1s;background-size:cover;background-position:center}
-  .konusuyor .av{box-shadow:0 0 0 2px var(--yesil)}
+  /* Konuşanın halkası: 3 px yeşil, fotoğrafla arasında arka plan renginde 2 px boşluk
+     (fotoğrafın üstünde de net seçilsin). Boşluğun rengi bulunduğu satırın rengidir. */
+  .konusuyor .av{box-shadow:0 0 0 2px var(--halkaArka,var(--bg2)),0 0 0 5px var(--yesil)}
+  .kisi:hover{--halkaArka:var(--bg3)}
+  #ben{--halkaArka:var(--alt)}
   .ad{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ses{display:none;align-items:center;gap:8px;margin-top:6px;padding-left:2px}
   /* Arkadaşın kaydırıcısı üstüne gelince açılır; kendi panelim alta yapışık olduğu için
@@ -70,9 +74,10 @@
   .kisi:hover .sus,.susturuldu .sus{opacity:1}
   .susturuldu .ad{opacity:.5}
   .susturuldu .sus{color:var(--kirmizi)}
-  /* Sadece sohbette olan (seste olmayan) kişi: soluk, listenin altında, ses ayarı gizli. */
-  .kisi.yazida{order:1;opacity:.45}
-  .kisi.yazida .sus,.kisi.yazida:hover .ses{display:none}
+  /* Sol taraf ses kanalıdır: sadece seste olanlar görünür. Sadece sohbette olanlar
+     (ve çevrimdışılar) sağdaki üye listesinde. */
+  .kisi.yazida{display:none}
+  #sesBos{padding:8px;font-size:13px;color:var(--soluk)}
 
   /* Seste değilken: mikrofon/çık/seviye gizlenir, "Sese katıl" görünür. */
   #sesAlani{display:none;padding:8px}
@@ -106,6 +111,19 @@
   #ben .ust{gap:6px}
   #ben .ib{width:30px}
 
+  /* En sağ: üye listesi. Çevrimiçiler canlı, çevrimdışılar sönük ve "ne zaman" yazılı. */
+  #uyeler{width:220px;flex:none;overflow:auto;padding:12px 8px;background:var(--bg2)}
+  .uyeBaslik{padding:10px 8px 6px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--soluk)}
+  .uye{display:flex;align-items:center;gap:10px;padding:5px 8px;border-radius:8px}
+  .uye:hover{background:var(--bg3);--halkaArka:var(--bg3)}
+  .uyeYazi{flex:1;min-width:0;display:flex;flex-direction:column}
+  .uye .ad{font-size:14px}
+  .uye .zaman{font-size:11px;color:var(--soluk);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .uye.cevrimdisi{opacity:.4}
+  .uye.cevrimdisi .ad{color:var(--yazi)!important}
+  /* Pencere daralınca sohbete yer kalsın diye üye listesi gizlenir. */
+  @media (max-width:760px){#uyeler{display:none}}
+
   /* Sağ: sohbet */
   #sag{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
 
@@ -138,6 +156,12 @@
   #guncelleme{display:none;position:fixed;top:0;left:0;right:0;z-index:9;padding:6px;text-align:center;font-size:13px;background:var(--bg4)}
 
   /* Ayarlar penceresi */
+  /* Büyük profil fotoğrafı: fotoğraflı birinin yuvarlağına tıklayınca açılır. */
+  #buyukFoto{display:none;position:fixed;inset:0;z-index:6;background:#000b;flex-direction:column;gap:12px;align-items:center;justify-content:center;cursor:zoom-out}
+  #buyukFoto.acik{display:flex}
+  #buyukFoto img{width:min(256px,80vw);height:auto;aspect-ratio:1;border-radius:16px;box-shadow:0 12px 40px #0008;image-rendering:auto}
+  #buyukFoto div{font-size:15px;font-weight:600;color:#fff}
+  #kisiler .av.fotolu,#mesajlar .av.fotolu,#uyeler .av.fotolu{cursor:zoom-in}
   #ayarlar{display:none;position:fixed;inset:0;z-index:5;background:#0009;align-items:center;justify-content:center}
   #ayarlar.acik{display:flex}
   #ayarlar .kart{width:300px;max-width:calc(100vw - 32px);padding:16px;border-radius:12px;background:var(--bg2);box-shadow:0 12px 40px #0006}
@@ -205,7 +229,7 @@
 
 <div id="app">
   <div id="sol">
-    <div id="kisiler"></div>
+    <div id="kisiler"><div id="sesBos">Seste kimse yok</div></div>
     <div id="sesAlani">
       <button id="seseKatil"><svg class="i"><use href="#i-kulaklik"/></svg>Sese katıl</button>
     </div>
@@ -239,8 +263,10 @@
       <div class="klipy">Powered by KLIPY</div>
     </div>
   </div>
+  <div id="uyeler"></div>
 </div>
 
+<div id="buyukFoto"><img alt=""><div></div></div>
 <div id="ayarlar">
   <div class="kart">
     <div class="ust"><h2>Ayarlar</h2><button class="ib k" id="ayarKapat" title="Kapat"><svg class="i"><use href="#i-x"/></svg></button></div>
@@ -290,6 +316,10 @@ const profiller = oku('profiller', {})
 const sesler = oku('sesler', {})
 let gecmis = []          // [{id, u: userId, t: metin, z: zaman}]
 let gecmisAnahtari = ''  // her odanın geçmişi ayrı saklanır
+// Odanın üyeleri ve en son ne zaman çevrimiçi göründükleri: userId -> zaman (ms).
+// Sunucu olmadığı için herkes kendi gördüğünü tutar; biri girince elindekini karşıya yollar,
+// iki taraf her kişi için en yeni zamanı alır. Her odanınki ayrı saklanır.
+let uyeler = {}, uyeAnahtari = ''
 
 let ctx, room, profil, benimId = ''
 const kisiler = new Map()
@@ -445,9 +475,10 @@ async function katil(isim, oda) {
     mikDugmesi()
   }
   // Seviye kazançtan sonra ölçülür; mikrofon kapalıyken 0 olur, halka yanmaz.
+  const benHalka = konusmaIzle($('ben'))
   seviyeIzle(micAnaliz, v => {
     $('micBar').style.width = Math.min(100, v * 300) + '%'
-    $('ben').classList.toggle('konusuyor', v > 0.04)
+    benHalka(v)
   })
 
   room = joinRoom({appId: 'yigit-ses-app-2026', password: oda, maxUsers: 6}, oda)
@@ -465,10 +496,19 @@ async function katil(isim, oda) {
   gecmisAnahtari = 'gecmis:' + oda
   gecmis = oku(gecmisAnahtari, []).filter(gecerliMesaj)
   mesajlariCiz()
+  uyeAnahtari = 'uyeler:' + oda
+  uyeler = oku(uyeAnahtari, {})
+  gorundu(benimId)
+  // Dakikada bir: açık olanların "son görülme"si yenilenir (biz kapanınca en son hâli kalır)
+  // ve "5 dakika önce" gibi yazılar güncellenir.
+  setInterval(() => { gorundu(benimId); for (const id of kisiler.keys()) gorundu(id) }, 60e3)
 
   // Profil (isim + renk): Trystero bunu doğrulanmış userId ile yayar ve sonradan
   // girenlere kendisi iletir. makeUserState sadece varsayılanı tanımlar; set yayınlar.
-  profil = room.makeUserState('profil', {isim: '', renk: '', g: 0})
+  // Trystero bir kişi durumunu varsayılan olarak 16 KB ile sınırlar ve büyüğünü sessizce
+  // göndermez; fotoğraf (en çok 40 KB) sığsın diye sınır 48 KB. Alan taraf da aynı sınırla
+  // kontrol ettiği için 16 KB'tan büyük fotoğrafı eski sürümler göremez.
+  profil = room.makeUserState('profil', {isim: '', renk: '', g: 0}, {maxBytes: 48 * 1024})
   profil.set(profiller[benimId]).catch(() => {})
   profil.onChange((data, {userId, self, removed}) => {
     if (self) return
@@ -518,6 +558,15 @@ async function katil(isim, oda) {
       }
     }
     mesajEkle(veri.m.slice(-GECMIS_MAX).filter(gecerliMesaj))
+    // Karşının bildiği son görülmeler: her kişi için en yenisi alınır (gelecek zaman kabul edilmez).
+    if (veri.s && typeof veri.s === 'object') {
+      const simdi = Date.now()
+      for (const [id, z] of Object.entries(veri.s).slice(0, 500)) {
+        if (id.length <= 200 && Number.isFinite(z) && z > (uyeler[id] || 0)) uyeler[id] = Math.min(z, simdi)
+      }
+      kaydet(uyeAnahtari, uyeler)
+      uyeleriCiz()
+    }
   })
 
   room.onUserJoin(({userId}) => kisiEkle(userId))
@@ -528,7 +577,8 @@ async function katil(isim, oda) {
   room.onPeerJoin(({peerId, userId}) => {
     if (userId === benimId) return
     room.addStream(gidenSes, {target: peerId}).catch(() => {})
-    esitle.send({m: gecmis, p: profiller}, {target: peerId}).catch(() => {})
+    gorundu(benimId)
+    esitle.send({m: gecmis, p: profiller, s: uyeler}, {target: peerId}).catch(() => {})
   })
   room.onUserLeave(({userId}) => {
     if (seste.get(userId) === true) cal('cikis')
@@ -606,9 +656,10 @@ async function katil(isim, oda) {
     if (!dosya) return
     $('fotoHata').textContent = ''
     try {
-      benimProfilimiYay({foto: await fotoHazirla(dosya)})
-    } catch {
-      $('fotoHata').textContent = 'Bu resim açılamadı'
+      const foto = await fotoHazirla(dosya)
+      await benimProfilimiYay({foto}).catch(() => { throw new Error('gonderilemedi') })
+    } catch (e) {
+      $('fotoHata').textContent = e.message === 'gonderilemedi' ? 'Fotoğraf gönderilemedi' : 'Bu resim açılamadı'
     }
   }
   $('fotoKaldir').onclick = () => benimProfilimiYay({foto: ''})
@@ -622,9 +673,9 @@ async function katil(isim, oda) {
 
   $('giris').style.display = 'none'
   $('app').style.display = 'flex'
+  // Açılınca sese otomatik girilmez: odaya bağlanılır, kimin seste olduğu görünür,
+  // "Sese katıl"a basınca girilir. Mikrofon da (Mac'in izin penceresi de) ancak o zaman açılır.
   sesArayuzu()
-  // Uygulama açılınca eskisi gibi doğrudan sese girilir.
-  sesiAc()
 }
 
 // Sese gir: herkesi hemen duymaya başla, mikrofonu ayrıca aç.
@@ -696,6 +747,7 @@ function sesiKapat() {
 
 function sesArayuzu() {
   $('app').classList.toggle('sessiz', !sesteyim)
+  uyeleriCiz()
   if (!sesteyim) { $('ben').classList.remove('konusuyor'); $('micBar').style.width = 0 }
 }
 
@@ -709,10 +761,13 @@ async function odadanCik() {
   location.reload()
 }
 
+// Dönen söz, profil herkese gönderilemezse hata verir (fotoğraf yüklerken gösterilir).
 function benimProfilimiYay(degisen) {
   profilGuncelle(benimId, {...profiller[benimId], ...degisen, g: Date.now()}, true)
-  profil.set(profiller[benimId]).catch(() => {})
   benimKartimiCiz()
+  const gonderim = profil.set(profiller[benimId])
+  gonderim.catch(() => {})
+  return gonderim
 }
 
 function benimKartimiCiz() {
@@ -729,7 +784,23 @@ function avatarCiz(el, id) {
   el.style.backgroundColor = renkAl(id)
   el.style.backgroundImage = foto ? `url("${foto}")` : ''
   el.textContent = foto ? '' : basHarf(id)
+  el.dataset.id = id
+  el.classList.toggle('fotolu', !!foto)
 }
+
+// Kişi listesindeki veya mesajlardaki fotoğraflı yuvarlağa tıklayınca fotoğraf büyür.
+// (Kendi kartındaki yuvarlak renk seçimi için; ona dokunulmaz.)
+document.addEventListener('click', e => {
+  const av = e.target.closest?.('#kisiler .av.fotolu, #mesajlar .av.fotolu, #uyeler .av.fotolu')
+  const foto = av && profiller[av.dataset.id]?.foto
+  if (!foto) return
+  $('buyukFoto').querySelector('img').src = foto
+  $('buyukFoto').querySelector('div').textContent = isimAl(av.dataset.id)
+  $('buyukFoto').classList.add('acik')
+})
+const buyukFotoKapat = () => $('buyukFoto').classList.remove('acik')
+$('buyukFoto').onclick = buyukFotoKapat
+document.addEventListener('keydown', e => { if (e.key === 'Escape') buyukFotoKapat() })
 
 // Profil fotoğrafı: sadece küçük JPEG kabul edilir (başkasından gelen veri CSS'e yazıldığı
 // için içerik sıkı kontrol edilir; sadece base64 karakterleri).
@@ -737,18 +808,19 @@ const FOTO_MAX = 40000
 const gecerliFoto = f => typeof f === 'string' && f.length <= FOTO_MAX &&
   /^data:image\/jpeg;base64,[A-Za-z0-9+/]+=*$/.test(f) ? f : ''
 
-// Seçilen resmi ortadan kare kırpıp 128x128 JPEG'e küçültür (~5-10 KB).
+// Seçilen resmi ortadan kare kırpıp 256x256 JPEG'e küçültür (büyütünce de net görünsün).
+// 40 KB sınırına sığana kadar kalite düşürülür (eski sürümler de bu sınırla kabul eder).
 // Küçük olduğu için profille birlikte herkese anında gider ve cihazda saklanır.
 async function fotoHazirla(dosya) {
   const resim = await createImageBitmap(dosya)
   const kenar = Math.min(resim.width, resim.height)
   const tuval = document.createElement('canvas')
-  tuval.width = tuval.height = 128
+  tuval.width = tuval.height = 256
   const c = tuval.getContext('2d')
   c.imageSmoothingQuality = 'high'
-  c.drawImage(resim, (resim.width - kenar) / 2, (resim.height - kenar) / 2, kenar, kenar, 0, 0, 128, 128)
+  c.drawImage(resim, (resim.width - kenar) / 2, (resim.height - kenar) / 2, kenar, kenar, 0, 0, 256, 256)
   resim.close()
-  for (const kalite of [.85, .7, .5]) {
+  for (const kalite of [.85, .75, .65, .5, .4]) {
     const veri = tuval.toDataURL('image/jpeg', kalite)
     if (gecerliFoto(veri)) return veri
   }
@@ -768,6 +840,7 @@ function profilGuncelle(id, p, kesin) {
   profiller[id] = yeni
   kaydet('profiller', profiller)
   kisiGuncelle(id)
+  uyeleriCiz()
   mesajlariCiz()
 }
 
@@ -797,6 +870,7 @@ function mesajEkle(liste) {
   gecmis = gecmis.concat(yeniler).sort((a, b) => a.z - b.z).slice(-GECMIS_MAX)
   kaydet(gecmisAnahtari, gecmis)
   mesajlariCiz()
+  uyeleriCiz()
   return yeniler.length
 }
 
@@ -859,6 +933,7 @@ function kisiEkle(userId) {
 
   kisiler.set(userId, {el, gain})
   kisiGuncelle(userId)
+  gorundu(userId)
   return el
 }
 
@@ -867,10 +942,73 @@ function kisiGuncelle(userId) {
   const k = kisiler.get(userId)
   if (!k) return
   k.el.classList.toggle('yazida', !sesteMi(userId))
-  k.el.title = sesteMi(userId) ? '' : 'Seste değil, sadece sohbette'
+  uyeleriCiz()
   if (!profiller[userId]) return
   k.el.querySelector('.ad').textContent = isimAl(userId)
   avatarCiz(k.el.querySelector('.av'), userId)
+}
+
+// Kişiyi şu an görülmüş say (son görülme) ve listeyi yenile.
+function gorundu(id) {
+  if (!uyeAnahtari) return
+  uyeler[id] = Date.now()
+  kaydet(uyeAnahtari, uyeler)
+  uyeleriCiz()
+}
+
+// "15 dakika önce", "3 saat önce", "2 gün önce". Tarih yazılmaz.
+function neZaman(z) {
+  const dk = Math.floor((Date.now() - z) / 60e3)
+  if (dk < 1) return 'az önce'
+  if (dk < 60) return dk + ' dakika önce'
+  if (dk < 60 * 24) return Math.floor(dk / 60) + ' saat önce'
+  return Math.floor(dk / 60 / 24) + ' gün önce'
+}
+
+// Sağdaki üye listesi ve soldaki "Seste kimse yok" yazısı. Çok sık çağrılabilir;
+// hepsi birikip tek seferde çizilir. (requestAnimationFrame değil: pencere arkadayken durur.)
+let uyeCizimi = 0
+function uyeleriCiz() {
+  if (uyeCizimi) return
+  uyeCizimi = setTimeout(() => {
+    uyeCizimi = 0
+    // Sen sestesen zaten oradasın; değilsen ve seste kimse yoksa bunu yaz.
+    $('sesBos').hidden = sesteyim || [...kisiler.keys()].some(sesteMi)
+    // Üyeler: son görülmesi bilinen herkes + şu an bağlı olanlar + bu odada mesaj yazmış olanlar.
+    const hepsi = new Set([...Object.keys(uyeler), ...kisiler.keys(), ...gecmis.map(m => m.u), benimId])
+    hepsi.delete('')
+    const acik = [], kapali = []
+    for (const id of hepsi) (id === benimId || kisiler.has(id) ? acik : kapali).push(id)
+    acik.sort((a, b) => isimAl(a).localeCompare(isimAl(b), 'tr'))
+    kapali.sort((a, b) => (uyeler[b] || 0) - (uyeler[a] || 0))
+    const parca = []
+    const bolum = (baslik, liste, cevrimici) => {
+      if (!liste.length) return
+      const h = document.createElement('div')
+      h.className = 'uyeBaslik'
+      h.textContent = `${baslik} — ${liste.length}`
+      parca.push(h)
+      for (const id of liste) {
+        const el = document.createElement('div')
+        el.className = 'uye' + (cevrimici ? '' : ' cevrimdisi')
+        el.innerHTML = '<span class="av"></span><div class="uyeYazi"><span class="ad"></span></div>'
+        avatarCiz(el.querySelector('.av'), id)
+        const ad = el.querySelector('.ad')
+        ad.textContent = isimAl(id) + (id === benimId ? ' (sen)' : '')
+        ad.style.color = renkAl(id)
+        if (!cevrimici && uyeler[id]) {
+          const z = document.createElement('span')
+          z.className = 'zaman'
+          z.textContent = neZaman(uyeler[id])
+          el.querySelector('.uyeYazi').append(z)
+        }
+        parca.push(el)
+      }
+    }
+    bolum('Çevrimiçi', acik, true)
+    bolum('Çevrimdışı', kapali, false)
+    $('uyeler').replaceChildren(...parca)
+  })
 }
 
 // Tarayıcılar, kullanıcı bir yere tıklamadan sesi başlatmayabilir (otomatik girişte
@@ -900,7 +1038,7 @@ function sesBagla(userId, stream) {
   kaynak.connect(k.gain)
   kaynak.connect(analiz)
   k.kaynak = kaynak
-  k.izlemeyiDurdur = seviyeIzle(analiz, v => k.el.classList.toggle('konusuyor', v > 0.04))
+  k.izlemeyiDurdur = seviyeIzle(analiz, konusmaIzle(k.el))
 }
 
 function kisiSil(userId) {
@@ -910,6 +1048,7 @@ function kisiSil(userId) {
   k.gain.disconnect()
   k.el.remove()
   kisiler.delete(userId)
+  gorundu(userId)  // çıktığı an = en son görüldüğü an
 }
 
 function sesiSok(k) {
@@ -917,6 +1056,17 @@ function sesiSok(k) {
   k.kaynak?.disconnect()
   if (k.audio) k.audio.srcObject = null
   k.izlemeyiDurdur = k.kaynak = k.audio = null
+}
+
+// Konuşma halkası: normal konuşma sesinde yanar (eşik düşük), ses kesilince 0,3 sn daha
+// yanık kalır ki kelime aralarında yanıp sönmesin.
+function konusmaIzle(el) {
+  let son = -Infinity
+  return v => {
+    const simdi = performance.now()
+    if (v > 0.015) son = simdi
+    el.classList.toggle('konusuyor', simdi - son < 300)
+  }
 }
 
 // 100 ms'de bir ses seviyesini ölçer. Dönen fonksiyon ölçümü durdurur
