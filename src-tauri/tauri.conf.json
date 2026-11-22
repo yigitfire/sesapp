@@ -8,6 +8,7 @@
   },
   "app": {
     "withGlobalTauri": true,
+    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "Monke",
@@ -15,7 +16,8 @@
         "height": 600,
         "minWidth": 600,
         "minHeight": 400,
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "transparent": true
       }
     ],
     "security": {

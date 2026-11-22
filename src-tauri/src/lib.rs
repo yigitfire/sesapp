@@ -247,6 +247,23 @@ fn guncelleme_kaydi(app: &tauri::AppHandle, satir: &str) {
 /// Ses günlüğü (ses.log, güncelleme günlüğüyle aynı klasörde): kimin sesinin gelip
 /// gelmediği, bağlantı olayları ve kendini onarma adımları. "Bazen duymuyorum" gibi
 /// ara sıra olan sorunlarda o anda ne olduğu sonradan görülsün diye.
+/// Saydam mod: pencerenin arkası buzlu (bulanık) görünür. Ne kadar saydam olacağını sayfa
+/// zemin renklerinin saydamlığıyla ayarlar; burası sadece arkadaki bulanıklığı açıp kapatır.
+/// Mac'te sistem "buzlu cam" malzemesi, Windows'ta akrilik.
+#[tauri::command]
+fn saydam(pencere: tauri::WebviewWindow, acik: bool) {
+    use tauri::window::{Effect, EffectState, EffectsBuilder};
+    if !acik {
+        let _ = pencere.set_effects(None);
+        return;
+    }
+    #[cfg(target_os = "macos")]
+    let efekt = EffectsBuilder::new().effect(Effect::UnderWindowBackground).state(EffectState::Active);
+    #[cfg(not(target_os = "macos"))]
+    let efekt = EffectsBuilder::new().effect(Effect::Acrylic).color(tauri::window::Color(17, 17, 17, 80));
+    let _ = pencere.set_effects(efekt.build());
+}
+
 #[tauri::command]
 fn ses_kaydi(app: tauri::AppHandle, satir: String) {
     gunluge_yaz(&app, "ses.log", &satir.chars().take(2000).collect::<String>());
@@ -325,7 +342,7 @@ pub fn calistir() {
                 tauri::Manager::app_handle(pencere).exit(0);
             }
         })
-        .invoke_handler(tauri::generate_handler![mikrofon_ac, mikrofon_kapat, mikrofonlar, gurultu_engelle, ses_kaydi, konsol,
+        .invoke_handler(tauri::generate_handler![mikrofon_ac, mikrofon_kapat, mikrofonlar, gurultu_engelle, ses_kaydi, konsol, saydam,
             bildirim::bildirim_goster, bildirim::bildirim_ac, bildirim::bildirim_bekle, bildirim::bildirim_birak, bildirim::bildirim_tikla])
         .run(tauri::generate_context!())
         .expect("uygulama başlatılamadı");

@@ -22,6 +22,52 @@
   /* Açık zeminde lime ince çizgi okunmaz; ince vurgular koyu zeytin yeşili. */
   :root[data-tema=acik]{--bg:#f6f6f6;--bg2:#ececec;--bg3:#e2e2e2;--bg4:#d2d2d2;--alt:#e6e6e6;
         --yazi:#1a1a1a;--soluk:#6b6b6b;--vurgu:#5f7f00;--vurguUst:#fff;--kirmizi:#d93b3b;--bas:#1a1a1a;color-scheme:light}
+  /* Renk temaları: koyu temanın zemin tonları değişir, lime vurgu aynı kalır. */
+  :root[data-tema=lacivert]{--bg:#0d1424;--bg2:#121a2d;--bg3:#18223a;--bg4:#24304d;--alt:#0f172a}
+  :root[data-tema=gri]{--bg:#1e1f22;--bg2:#25272b;--bg3:#2c2e33;--bg4:#383b41;--alt:#222326}
+  :root[data-tema=kahve]{--bg:#1a1410;--bg2:#211a15;--bg3:#2a211b;--bg4:#382c24;--alt:#1d1712}
+  :root[data-tema=mor]{--bg:#16111f;--bg2:#1c1628;--bg3:#241c33;--bg4:#312645;--alt:#19131f}
+  :root[data-tema=orman]{--bg:#0e1712;--bg2:#131e18;--bg3:#19271f;--bg4:#23352b;--alt:#101a14}
+  :root[data-tema=bordo]{--bg:#1c0e12;--bg2:#241318;--bg3:#2e1920;--bg4:#3e222b;--alt:#1f1014}
+  :root[data-tema=petrol]{--bg:#0c181b;--bg2:#112024;--bg3:#16292e;--bg4:#1f3840;--alt:#0e1c1f}
+  :root[data-tema=siyah]{--bg:#000000;--bg2:#0a0a0a;--bg3:#141414;--bg4:#1f1f1f;--alt:#050505}
+  #temaSec{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  #temaSec button{height:34px;border-radius:8px;border:2px solid var(--bg4);font-size:0}
+  #temaSec button.secili{border-color:var(--vurgu)}
+  #temaSec [data-tema=koyu]{background:#111111}#temaSec [data-tema=acik]{background:#f6f6f6}#temaSec [data-tema=lacivert]{background:#0d1424}#temaSec [data-tema=gri]{background:#1e1f22}#temaSec [data-tema=kahve]{background:#1a1410}#temaSec [data-tema=mor]{background:#16111f}#temaSec [data-tema=orman]{background:#0e1712}#temaSec [data-tema=bordo]{background:#1c0e12}#temaSec [data-tema=petrol]{background:#0c181b}#temaSec [data-tema=siyah]{background:#000000}
+  /* Saydam mod (masaüstü): büyük zeminler yarı saydam olur, pencerenin arkası buzlu görünür.
+     --opak JS'ten gelir (ne kadar dolu). Menüler, paneller ve yazı kutusu dolu kalır, okunsun. */
+  :root.saydam{--opak:70%}
+  :root.saydam body{background:color-mix(in srgb,var(--bg) var(--opak),transparent)}
+  :root.saydam #sol,:root.saydam #uyeler{background:color-mix(in srgb,var(--bg2) var(--opak),transparent)}
+  :root.saydam #ben{background:color-mix(in srgb,var(--alt) var(--opak),transparent)}
+  #saydamSeviye{display:flex;align-items:center;gap:8px;margin:2px 0 6px}
+  #saydamSeviye[hidden]{display:none}
+  #saydamSeviye .yuzde{width:36px}
+  #saydamSeviye>span:first-child{font-size:13px;color:var(--soluk)}
+  #saydamKutu{margin-top:10px}
+  /* Ses paneli: seste herkesin duyacağı kısa sesler. */
+  #sesPanelMenu{max-height:min(420px,70vh);overflow:auto}
+  #sesPanelMenu h5{margin:10px 0 6px;font-size:12px;font-weight:600;color:var(--soluk)}
+  #sesPanelMenu h5:first-of-type{margin-top:0}
+  .sesIzgara{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+  .sesIzgara button{position:relative;height:34px;padding:0 8px;border-radius:7px;background:var(--bg4);font-size:13px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+  .sesIzgara button:hover{background:color-mix(in srgb,var(--vurgu) 22%,var(--bg4))}
+  .sesIzgara button.ekle{text-align:center;color:var(--soluk);border:1px dashed var(--soluk);background:none}
+  .sesIzgara button .sil{position:absolute;top:0;right:0;width:22px;height:100%;display:none;place-items:center;
+    background:var(--bg4);color:var(--kirmizi);font-size:15px}
+  .sesIzgara button:hover .sil{display:grid}
+  #sesPanelMenu .seviye{margin-top:4px}
+  #efektBaslik{margin-top:12px}
+  #sesPanelMenu .ipucu,#girisSesiKutu .ipucu{font-size:11px;color:var(--soluk);margin-top:6px}
+  #sesPanelHata,#girisSesiHata{font-size:12px;color:var(--kirmizi);margin-top:6px}
+  #sesPanelHata:empty,#girisSesiHata:empty{display:none}
+  #girisSesiKutu .satir{display:flex;align-items:center;gap:6px;font-size:13px}
+  #girisSesiKutu .satir span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--soluk)}
+  #girisSesiKutu .satir button{padding:5px 9px;border-radius:7px;background:var(--bg3);font-size:12px}
+  #girisSesiKutu .satir button:hover{background:var(--bg4)}
+  #girisSesiKutu .satir button[hidden]{display:none}
   *{box-sizing:border-box}
   body{margin:0;height:100vh;display:flex;background:var(--bg);color:var(--yazi);
        font:15px/1.4 'Noto Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
@@ -346,7 +392,7 @@
 </style>
 <script>
   // Tema, sayfa çizilmeden önce uygulanır; yoksa açık temada bir an koyu ekran yanıp söner.
-  try { if (localStorage.getItem('tema') === 'acik') document.documentElement.dataset.tema = 'acik' } catch {}
+  try { const t = localStorage.getItem('tema'); if (t && t !== 'koyu') document.documentElement.dataset.tema = t } catch {}
 </script>
 </head>
 <body>
@@ -370,6 +416,7 @@
   <symbol id="i-anket" viewBox="0 0 24 24"><path d="M5 20V11M12 20V4M19 20v-6"/></symbol>
   <symbol id="i-resim" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></symbol>
   <symbol id="i-sag" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
 </svg>
 
 <div id="guncelleme"></div>
@@ -409,11 +456,21 @@
         <h4>Çıkış ses seviyesi</h4>
         <div class="seviye"><input type="range" id="cikisSeviye" min="0" max="200" value="100"><span class="yuzde" id="cikisYuzde">100</span></div>
       </div>
+      <div class="menu" id="sesPanelMenu">
+        <h4>Ses paneli</h4>
+        <div id="sesPanelListe"></div>
+        <div id="sesPanelHata"></div>
+        <div class="ipucu">Bastığın ses sesteki herkese çalar. En fazla 5 saniye; uzunsa ilk 5 saniyesi alınır.</div>
+        <div class="ipucu" id="efektBaslik">Bu seslerin sana gelen seviyesi</div>
+        <div class="seviye" title="Panel seslerinin ve giriş seslerinin sana ne kadar yüksek çalacağı"><input type="range" id="efektSeviye" min="0" max="100" value="70"><span class="yuzde" id="efektYuzde">70</span></div>
+        <input type="file" id="panelDosya" accept="audio/*" hidden>
+      </div>
       <div id="sesBagli">
         <div class="yazi">
           <b><svg class="sinyal" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="15" width="5.5" height="7" rx="1.5"/><rect x="9.25" y="9" width="5.5" height="13" rx="1.5"/><rect x="16.5" y="3" width="5.5" height="19" rx="1.5"/></svg>Ses bağlı</b>
           <span>Ses odası</span>
         </div>
+        <button class="ib" id="sesPanelAc" title="Ses paneli"><svg class="i"><use href="#i-panel"/></svg></button>
         <button class="ib tehlike" id="cik" title="Sesten çık"><svg class="i"><use href="#i-kapat"/></svg></button>
       </div>
       <div class="ust">
@@ -491,7 +548,18 @@
       <input type="file" id="fotoDosya" accept="image/*" hidden>
     </div>
     <h3>Tema</h3>
-    <div class="bolmeli" id="temaSec"><button data-tema="koyu">Koyu</button><button data-tema="acik">Açık</button></div>
+    <div id="temaSec"><button data-tema="koyu" title="Koyu">Koyu</button><button data-tema="acik" title="Açık">Açık</button><button data-tema="lacivert" title="Lacivert">Lacivert</button><button data-tema="gri" title="Gri">Gri</button><button data-tema="kahve" title="Kahverengi">Kahverengi</button><button data-tema="mor" title="Mor">Mor</button><button data-tema="orman" title="Orman yeşili">Orman yeşili</button><button data-tema="bordo" title="Bordo">Bordo</button><button data-tema="petrol" title="Petrol">Petrol</button><button data-tema="siyah" title="Gece siyahı">Gece siyahı</button></div>
+    <div id="saydamKutu" hidden>
+      <label class="anahtar" title="Pencerenin arkası buzlu cam gibi bulanık görünür.">Saydam mod<input type="checkbox" id="saydamAcik"></label>
+      <div id="saydamSeviye" hidden><span>Saydamlık</span><input type="range" id="saydamYuzde" min="5" max="90" value="30"><span class="yuzde" id="saydamYazi">30%</span></div>
+    </div>
+    <h3>Sese giriş sesim</h3>
+    <div id="girisSesiKutu">
+      <div class="satir"><span id="girisSesiAd">Yok (varsayılan ses)</span><button id="girisSesiDinle" hidden>Dinle</button><button id="girisSesiKaldir" hidden>Kaldır</button><button id="girisSesiSec">Yükle</button></div>
+      <div id="girisSesiHata"></div>
+      <div class="ipucu">Sese girince herkese bu ses çalar. En fazla 3 saniye; uzunsa ilk 3 saniyesi alınır.</div>
+      <input type="file" id="girisSesiDosya" accept="audio/*" hidden>
+    </div>
     <h3>Bildirim sesleri</h3>
     <label class="anahtar">Biri sese girince<input type="checkbox" data-bildirim="giris"></label>
     <label class="anahtar">Biri sesten çıkınca<input type="checkbox" data-bildirim="cikis"></label>
@@ -608,18 +676,50 @@ const durum = (metin, hata = true) => { $('hata').textContent = metin; $('hata')
 
 // ---- Ayarlar: tema + bildirim sesleri (bu cihazda saklanır) ----
 const bildirim = {giris: true, cikis: true, mesaj: true, ...oku('bildirim', {})}
+// Saydam mod (sadece masaüstü): {acik, yuzde}. yuzde = ne kadar saydam (5-90).
+const saydamAyar = {acik: false, yuzde: 30, ...oku('saydam', {})}
+saydamAyar.yuzde = Math.min(90, Math.max(5, Number(saydamAyar.yuzde) || 30))
+let saydamEfekti = null
+function saydamUygula() {
+  const acik = masaustu && saydamAyar.acik
+  const kok = document.documentElement
+  kok.classList.toggle('saydam', acik)
+  kok.style.setProperty('--opak', (100 - saydamAyar.yuzde) + '%')
+  $('saydamSeviye').hidden = !acik
+  // Arkadaki bulanıklık Rust'ta açılır/kapanır; sadece değişince çağrılır.
+  if (masaustu && saydamEfekti !== acik) {
+    saydamEfekti = acik
+    window.__TAURI__.core.invoke('saydam', {acik}).catch(() => {})
+  }
+}
+const TEMA_ADLARI = [...$('temaSec').children].map(b => b.dataset.tema)
 function temaUygula(t) {
-  if (t === 'acik') document.documentElement.dataset.tema = 'acik'
+  if (!TEMA_ADLARI.includes(t)) t = 'koyu'
+  if (t !== 'koyu') document.documentElement.dataset.tema = t
   else delete document.documentElement.dataset.tema
   for (const b of $('temaSec').children) b.classList.toggle('secili', b.dataset.tema === t)
 }
-temaUygula(localStorage.getItem('tema') === 'acik' ? 'acik' : 'koyu')
+temaUygula(localStorage.getItem('tema') || 'koyu')
 $('temaSec').onclick = e => {
-  const t = e.target.dataset?.tema
+  const t = e.target.closest?.('button')?.dataset.tema
   if (!t) return
   try { localStorage.setItem('tema', t) } catch {}
   temaUygula(t)
 }
+if (masaustu) $('saydamKutu').hidden = false
+$('saydamAcik').checked = saydamAyar.acik
+$('saydamYuzde').value = saydamAyar.yuzde
+$('saydamYazi').textContent = saydamAyar.yuzde + '%'
+boya($('saydamYuzde'))
+$('saydamAcik').onchange = () => { saydamAyar.acik = $('saydamAcik').checked; kaydet('saydam', saydamAyar); saydamUygula() }
+$('saydamYuzde').oninput = () => {
+  saydamAyar.yuzde = Number($('saydamYuzde').value)
+  $('saydamYazi').textContent = saydamAyar.yuzde + '%'
+  boya($('saydamYuzde'))
+  kaydet('saydam', saydamAyar)
+  saydamUygula()
+}
+saydamUygula()
 for (const k of document.querySelectorAll('[data-bildirim]')) {
   k.checked = bildirim[k.dataset.bildirim]
   k.onchange = () => {
@@ -925,7 +1025,7 @@ async function katil(isim, oda) {
     const once = seste.get(userId), simdi = data?.var !== false
     seste.set(userId, simdi)
     if (bildirimZamani() && simdi !== once) {
-      if (simdi) { cal('giris'); ekranBildirimi(userId, 'sese girdi', 'Ses odasına katıldı') }
+      if (simdi) { girisSesiCal(userId); ekranBildirimi(userId, 'sese girdi', 'Ses odasına katıldı') }
       else if (once === true) cal('cikis')
     }
     kisiEkle(userId)
@@ -933,6 +1033,53 @@ async function katil(isim, oda) {
   })
   // Mikrofon açılana kadar "seste değil" görün (açılmazsa da öyle kalır).
   sesDurumu.set({var: false}).catch(() => {})
+
+  // Sesler (giriş sesi + ses paneli). Herkes kendi ses listesini (sadece özetler ve adlar) yayar;
+  // sesin kendisi bir kere, özetiyle doğrulanarak gelir ve saklanır. Panelde basınca sadece
+  // hangi ses olduğu gider, herkes kendi kopyasını çalar.
+  sesListesi = room.makeUserState('sesler', {giris: '', panel: []}, {maxBytes: 8 * 1024})
+  sesListesi.set(benimSesler).catch(() => {})
+  sesListesi.onChange((data, {userId, self, removed}) => {
+    if (self) return
+    if (removed) { kisiSesleri.delete(userId); return sesPaneliniCiz() }
+    const l = seslerTemizle(data)
+    kisiSesleri.set(userId, l)
+    for (const o of [l.giris, ...l.panel.map(x => x.o)]) if (o) sesVerisiAl(o, userId)
+    sesPaneliniCiz()
+  })
+  const sesVeriKanali = room.makeAction('sesVeri')
+  const sesIstegi = room.makeAction('sesIste')
+  const sesCalKanali = room.makeAction('sesCal')
+  sesVeriKanali.onMessage(async (veri, {metadata}) => {
+    const o = metadata?.o
+    if (!gecerliOzet(o) || !sesIsteniyor.has(o)) return
+    if (veri instanceof Blob) veri = await veri.arrayBuffer()
+    else if (ArrayBuffer.isView(veri)) veri = veri.buffer.slice(veri.byteOffset, veri.byteOffset + veri.byteLength)
+    if (!(veri instanceof ArrayBuffer) || !veri.byteLength || veri.byteLength > SES_MAX_BAYT || veri.byteLength % 2) return
+    if (await ozetAl(veri) !== o) return
+    sesIsteniyor.delete(o)
+    sesTamponlari.set(o, pcmTampon(veri))
+    sesVeriSakla(o, veri)
+    sesGeldi(o)
+  })
+  sesIstegi.onMessage(async (v, {peerId}) => {
+    if (!gecerliOzet(v?.o)) return
+    const veri = await sesVeriGetir(v.o)
+    if (veri) sesVeriKanali.send(veri, {target: peerId, metadata: {o: v.o}}).catch(() => {})
+  })
+  sesCalKanali.onMessage((v, {userId}) => {
+    if (!gecerliOzet(v?.o) || !sesteMi(userId)) return
+    // Aynı kişi saniyede en çok 4 ses: düğmeye basılı tutup herkesi rahatsız edemesin.
+    const simdi = Date.now(), son = sonBasma.get(userId) || 0
+    if (simdi - son < 250) return
+    sonBasma.set(userId, simdi)
+    panelSesiCal(v.o, userId)
+  })
+  sesIste = (o, kimden) => {
+    const hedef = Object.entries(room.getPeers()).find(([, b]) => b?.userId === kimden)?.[0]
+    sesIstegi.send({o}, hedef ? {target: hedef} : undefined).catch(() => {})
+  }
+  sesBas = o => sesCalKanali.send({o}).catch(() => {})
 
   // Sohbet. Gönderenin kimliği mesajın içinden değil, Trystero'nun doğruladığı
   // userId'den alınır; kimse başkası adına mesaj atamaz.
@@ -1307,7 +1454,7 @@ function sesiAc() {
   dinlemeKazanci()
   sesDurumu.set({var: true}).catch(() => {})
   sesArayuzu()
-  cal('giris')
+  girisSesiCal(benimId)
   mikrofonuAc()
 }
 
@@ -1393,7 +1540,7 @@ function seviyeBagla(kaydirici, yazi, deger, degisti) {
 // Mikrofon/kulaklık okunun açtığı menüler: biri açılınca diğeri kapanır,
 // dışarı tıklayınca veya Esc'ye basınca kapanır.
 function menuleriKapat() {
-  for (const id of ['mikMenu', 'kulakMenu', 'mikMenuAc', 'kulakMenuAc']) $(id).classList.remove('acik')
+  for (const id of ['mikMenu', 'kulakMenu', 'mikMenuAc', 'kulakMenuAc', 'sesPanelMenu', 'sesPanelAc']) $(id).classList.remove('acik')
 }
 function menuAc(menu, ok) {
   const acilacak = !menu.classList.contains('acik')
@@ -1480,8 +1627,9 @@ async function girisCihaziSec(id) {
   if (no === acmaNo) mikDugmesi()
 }
 $('kulakMenuAc').onclick = () => menuAc($('kulakMenu'), $('kulakMenuAc'))
+$('sesPanelAc').onclick = () => { menuAc($('sesPanelMenu'), $('sesPanelAc')); sesPaneliniCiz() }
 document.addEventListener('pointerdown', e => {
-  if (!e.target.closest('#ben .menu, #mikMenuAc, #kulakMenuAc')) menuleriKapat()
+  if (!e.target.closest('#ben .menu, #mikMenuAc, #kulakMenuAc, #sesPanelAc')) menuleriKapat()
 })
 document.addEventListener('keydown', e => { if (e.key === 'Escape') menuleriKapat() })
 
@@ -1498,6 +1646,7 @@ function sesiKapat() {
   menuleriKapat()
   sesDurumu.set({var: false}).catch(() => {})
   sesArayuzu()
+  efektleriDurdur()
   cal('cikis')
 }
 
@@ -2113,6 +2262,261 @@ const RESIM_SAKLA = 200         // bu bilgisayarda saklanan en çok fotoğraf (e
 let anketGonder = () => {}, oyVer = () => {}   // odaya girince tanımlanır
 let oylar = {}, oyAnahtari = ''    // anket id -> {userId: {s: seçenek (-1: oy yok), z: zaman}}
 let resimGonder = async () => {}   // odaya girince tanımlanır
+
+// ---- Sesler: kişiye özel giriş sesi ve ses paneli ----
+// Yüklenen ses (MP3, WAV, M4A...) burada tek biçime çevrilir: tek kanal, 24 kHz, 16 bit ham
+// örnek. Böylece her bilgisayar (Mac, Windows) aynı veriyi sorunsuz çalar ve boyut küçük kalır
+// (3 sn ≈ 144 KB). Sadece hoparlöre çalar; mikrofona karışmaz (ducking yok).
+const SES_HZ = 24000, GIRIS_SN = 3, PANEL_SN = 5, PANEL_MAX = 12
+const SES_MAX_BAYT = PANEL_SN * SES_HZ * 2
+const gecerliOzet = o => typeof o === 'string' && /^[0-9a-f]{64}$/.test(o)
+function seslerTemizle(d) {
+  const panel = [], gorulen = new Set()
+  for (const x of Array.isArray(d?.panel) ? d.panel.slice(0, PANEL_MAX) : []) {
+    if (!gecerliOzet(x?.o) || gorulen.has(x.o)) continue
+    gorulen.add(x.o)
+    panel.push({o: x.o, a: String(x.a || 'Ses').slice(0, 24) || 'Ses'})
+  }
+  return {giris: gecerliOzet(d?.giris) ? d.giris : '', girisAd: String(d?.girisAd || '').slice(0, 40), panel}
+}
+const benimSesler = seslerTemizle(oku('sesler', {}))
+const kisiSesleri = new Map()      // userId -> {giris, panel}
+const sesTamponlari = new Map()    // özet -> AudioBuffer
+const sesIsteniyor = new Map()     // özet -> istek zamanı (sadece istenen ses kabul edilir)
+const bekleyenCalma = new Map()    // özet -> {zaman}: verisi gelince çalınacaklar
+const sonBasma = new Map()
+const calanEfektler = new Set()
+let sesListesi = null, sesIste = () => {}, sesBas = () => {}
+let efektSeviyesi = Math.min(100, Math.max(0, Number(oku('efektSeviye', 70)) || 0))
+
+async function sesVeriGetir(o) {
+  try {
+    const d = await depo()
+    return await new Promise((ok, hata) => {
+      const r = d.transaction('sesler').objectStore('sesler').get(o)
+      r.onsuccess = () => ok(r.result?.veri || null)
+      r.onerror = () => hata(r.error)
+    })
+  } catch { return null }
+}
+async function sesVeriSakla(o, veri) {
+  try {
+    const d = await depo()
+    await new Promise((ok, hata) => {
+      const tx = d.transaction('sesler', 'readwrite')
+      tx.objectStore('sesler').put({o, veri, z: Date.now()})
+      tx.oncomplete = ok
+      tx.onerror = () => hata(tx.error)
+    })
+  } catch {}
+}
+function pcmTampon(veri) {
+  const pcm = new Int16Array(veri)
+  const t = new AudioBuffer({length: Math.max(1, pcm.length), numberOfChannels: 1, sampleRate: SES_HZ})
+  const d = t.getChannelData(0)
+  for (let i = 0; i < pcm.length; i++) d[i] = pcm[i] / 32768
+  return t
+}
+// Sesin çalınabilir hali: önce bellekte, sonra bu bilgisayarda aranır; yoksa null.
+async function sesTamponu(o) {
+  if (sesTamponlari.has(o)) return sesTamponlari.get(o)
+  const veri = await sesVeriGetir(o)
+  if (!veri) return null
+  const t = pcmTampon(veri)
+  sesTamponlari.set(o, t)
+  return t
+}
+// Elde yoksa sahibinden ister (aynı ses 20 sn'de bir istenir).
+async function sesVerisiAl(o, kimden) {
+  if (sesTamponlari.has(o) || await sesVeriGetir(o)) return
+  if (Date.now() - (sesIsteniyor.get(o) || 0) < 20e3) return
+  sesIsteniyor.set(o, Date.now())
+  sesIste(o, kimden)
+}
+function sesGeldi(o) {
+  const b = bekleyenCalma.get(o)
+  bekleyenCalma.delete(o)
+  // Basıldıktan sonra 3 sn içinde geldiyse hâlâ çalınır; daha geç gelirse anlamsız olur.
+  if (b && Date.now() - b.zaman < 3000) tamponCal(sesTamponlari.get(o))
+}
+// Uzunluğa göre (giriş 3, panel 5 sn) yüklenen dosyayı hazırlar: ArrayBuffer (16 bit ham ses).
+async function sesHazirla(dosya, sn) {
+  if (dosya.size > 30e6) throw new Error('Dosya çok büyük')
+  let tampon
+  try { tampon = await new OfflineAudioContext(1, 1, 48000).decodeAudioData(await dosya.arrayBuffer()) }
+  catch { throw new Error('Bu ses dosyası açılamadı (MP3, WAV, M4A, OGG dene)') }
+  const sure = Math.min(tampon.duration, sn)
+  const n = Math.max(1, Math.floor(sure * SES_HZ))
+  const oc = new OfflineAudioContext(1, n, SES_HZ)
+  const k = oc.createBufferSource(), g = oc.createGain()
+  k.buffer = tampon
+  // Kesilen sesin sonu "tık" diye bitmesin: son 60 ms'de kısılır.
+  if (tampon.duration > sn) { g.gain.setValueAtTime(1, Math.max(0, sure - .06)); g.gain.linearRampToValueAtTime(0, sure) }
+  k.connect(g).connect(oc.destination)
+  k.start()
+  const ornek = (await oc.startRendering()).getChannelData(0)
+  let tepe = 0
+  for (const v of ornek) tepe = Math.max(tepe, Math.abs(v))
+  if (tepe < .001) throw new Error('Ses dosyası boş görünüyor')
+  // Çok yüksekse kırpılmasın diye biraz kısılır (yükseltilmez).
+  const olcek = tepe > .95 ? .95 / tepe : 1
+  const pcm = new Int16Array(n)
+  for (let i = 0; i < n; i++) pcm[i] = Math.round(Math.max(-1, Math.min(1, ornek[i] * olcek)) * 32767)
+  return pcm.buffer
+}
+function tamponCal(t) {
+  if (!ctx || !t) return
+  ctx.resume?.().catch(() => {})
+  // Aynı anda en çok 4 ses: fazlası en eskisini susturur.
+  if (calanEfektler.size >= 4) {
+    const eski = calanEfektler.values().next().value
+    calanEfektler.delete(eski)
+    try { eski.stop() } catch {}
+  }
+  const k = ctx.createBufferSource(), g = ctx.createGain()
+  k.buffer = t
+  g.gain.value = efektSeviyesi / 100
+  k.connect(g).connect(ctx.destination)
+  k.onended = () => calanEfektler.delete(k)
+  calanEfektler.add(k)
+  k.start()
+}
+function efektleriDurdur() {
+  for (const k of calanEfektler) try { k.stop() } catch {}
+  calanEfektler.clear()
+}
+// Biri sese girince: kendi giriş sesi varsa o, yoksa her zamanki giriş sesi.
+async function girisSesiCal(userId) {
+  if (!bildirim.giris) return
+  const o = userId === benimId ? benimSesler.giris : kisiSesleri.get(userId)?.giris
+  const t = o && await sesTamponu(o)
+  if (t) return tamponCal(t)
+  cal('giris')
+  if (o) sesVerisiAl(o, userId)
+}
+// Panel sesi: sadece ikimiz de sesteyken ve kulaklığım açıkken duyulur.
+async function panelSesiCal(o, kimden) {
+  if (!sesteyim || sagir) return
+  const t = await sesTamponu(o)
+  if (t) return tamponCal(t)
+  bekleyenCalma.set(o, {zaman: Date.now()})
+  sesIsteniyor.delete(o)
+  sesVerisiAl(o, kimden)
+}
+function seslerimiYay() {
+  kaydet('sesler', benimSesler)
+  sesListesi?.set(benimSesler).catch(() => {})
+}
+const dosyaAdi = d => String(d.name || 'Ses').replace(/\.[^.]+$/, '').trim().slice(0, 24) || 'Ses'
+
+// Ses paneli: önce kendi seslerim (+ ekle), sonra seste olanların sesleri.
+function sesPaneliniCiz() {
+  const liste = $('sesPanelListe')
+  if (!liste) return
+  liste.textContent = ''
+  const bolum = (baslik, sesler, benim) => {
+    const h = document.createElement('h5')
+    h.textContent = baslik
+    const izgara = document.createElement('div')
+    izgara.className = 'sesIzgara'
+    for (const x of sesler) {
+      const b = document.createElement('button')
+      b.textContent = x.a
+      b.title = x.a
+      b.onclick = e => {
+        if (e.target.closest('.sil')) return
+        panelSesiCal(x.o, benimId)
+        sesBas(x.o)
+      }
+      if (benim) {
+        const sil = document.createElement('span')
+        sil.className = 'sil'
+        sil.textContent = '×'
+        sil.title = 'Sil'
+        sil.onclick = () => {
+          benimSesler.panel = benimSesler.panel.filter(y => y.o !== x.o)
+          seslerimiYay()
+          sesPaneliniCiz()
+        }
+        b.append(sil)
+      }
+      izgara.append(b)
+    }
+    if (benim && sesler.length < PANEL_MAX) {
+      const ekle = document.createElement('button')
+      ekle.className = 'ekle'
+      ekle.textContent = '+ Ses ekle'
+      ekle.onclick = () => $('panelDosya').click()
+      izgara.append(ekle)
+    }
+    if (izgara.children.length) liste.append(h, izgara)
+  }
+  bolum('Seslerin', benimSesler.panel, true)
+  for (const [id, l] of kisiSesleri) if (l.panel.length && kisiler.has(id)) bolum(isimAl(id) + ' sesleri', l.panel, false)
+}
+$('panelDosya').onchange = async () => {
+  const d = $('panelDosya').files[0]
+  $('panelDosya').value = ''
+  if (!d) return
+  $('sesPanelHata').textContent = ''
+  try {
+    const veri = await sesHazirla(d, PANEL_SN)
+    const o = await ozetAl(veri)
+    await sesVeriSakla(o, veri)
+    sesTamponlari.set(o, pcmTampon(veri))
+    if (!benimSesler.panel.some(x => x.o === o)) benimSesler.panel.push({o, a: dosyaAdi(d)})
+    benimSesler.panel = benimSesler.panel.slice(0, PANEL_MAX)
+    seslerimiYay()
+    sesPaneliniCiz()
+  } catch (e) { $('sesPanelHata').textContent = e.message }
+}
+{
+  const r = $('efektSeviye')
+  r.value = efektSeviyesi
+  $('efektYuzde').textContent = efektSeviyesi
+  boya(r)
+  r.oninput = () => {
+    efektSeviyesi = Number(r.value)
+    $('efektYuzde').textContent = efektSeviyesi
+    boya(r)
+    kaydet('efektSeviye', efektSeviyesi)
+  }
+}
+
+// Ayarlar: sese giriş sesim.
+function girisSesiArayuzu() {
+  const var_ = !!benimSesler.giris
+  $('girisSesiAd').textContent = var_ ? (benimSesler.girisAd || 'Özel ses') : 'Yok (varsayılan ses)'
+  $('girisSesiDinle').hidden = !var_
+  $('girisSesiKaldir').hidden = !var_
+  $('girisSesiSec').textContent = var_ ? 'Değiştir' : 'Yükle'
+}
+girisSesiArayuzu()
+$('girisSesiSec').onclick = () => $('girisSesiDosya').click()
+$('girisSesiDinle').onclick = async () => tamponCal(await sesTamponu(benimSesler.giris))
+$('girisSesiKaldir').onclick = () => {
+  benimSesler.giris = ''
+  benimSesler.girisAd = ''
+  seslerimiYay()
+  girisSesiArayuzu()
+}
+$('girisSesiDosya').onchange = async () => {
+  const d = $('girisSesiDosya').files[0]
+  $('girisSesiDosya').value = ''
+  if (!d) return
+  $('girisSesiHata').textContent = ''
+  try {
+    const veri = await sesHazirla(d, GIRIS_SN)
+    const o = await ozetAl(veri)
+    await sesVeriSakla(o, veri)
+    sesTamponlari.set(o, pcmTampon(veri))
+    benimSesler.giris = o
+    benimSesler.girisAd = dosyaAdi(d)
+    seslerimiYay()
+    girisSesiArayuzu()
+    tamponCal(sesTamponlari.get(o))
+  } catch (e) { $('girisSesiHata').textContent = e.message }
+}
 let resimVeriGonder = async () => {}
 let resimIste = () => {}
 const resimler = new Map()         // mesaj id -> <img> (her çizimde baştan yüklenmesin)
@@ -2132,11 +2536,12 @@ async function ozetAl(veri) {
 let depoSozu
 function depo() {
   return depoSozu ??= new Promise((ok, hata) => {
-    // 2. sürüm: favoriler eklendi (eski fotoğraflar yerinde kalır).
-    const r = indexedDB.open('monke', 2)
+    // 2. sürüm: favoriler, 3. sürüm: sesler (giriş/panel) eklendi (eskiler yerinde kalır).
+    const r = indexedDB.open('monke', 3)
     r.onupgradeneeded = e => {
       if (e.oldVersion < 1) r.result.createObjectStore('resimler', {keyPath: 'id'}).createIndex('z', 'z')
       if (e.oldVersion < 2) r.result.createObjectStore('favoriler', {keyPath: 'id'})
+      if (e.oldVersion < 3) r.result.createObjectStore('sesler', {keyPath: 'o'})
     }
     r.onsuccess = () => ok(r.result)
     r.onerror = () => hata(r.error)
