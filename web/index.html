@@ -328,9 +328,8 @@
 
 <div id="giris">
   <div id="logo"><img src="logo.svg" alt="Monke"></div>
-  <input id="isim" placeholder="Adın" maxlength="24">
   <div class="satir">
-    <input id="oda" placeholder="Oda şifresi">
+    <input id="isim" placeholder="Adın" maxlength="24">
     <button id="katil" title="Katıl"><svg class="i"><use href="#i-ok"/></svg></button>
   </div>
   <div id="hata"></div>
@@ -659,8 +658,9 @@ function cal(tur) {
 let odaGirisi = 0
 const bildirimZamani = () => Date.now() - odaGirisi > 4000
 
+// Şimdilik tek oda var: uygulamayı açan herkes buraya bağlanır (eskiden herkesin yazdığı "15").
+const ODA = '15'
 $('isim').value = localStorage.getItem('isim') || ''
-$('oda').value = localStorage.getItem('oda') || ''
 
 // Masaüstünde yeni sürüm bulunursa Rust bunu bildirir; kurulup yeniden başlarken uyarı göster.
 if (masaustu) window.__TAURI__.event.listen('guncelleme', e => {
@@ -670,21 +670,19 @@ if (masaustu) window.__TAURI__.event.listen('guncelleme', e => {
 
 $('katil').onclick = () => {
   const isim = $('isim').value.trim().slice(0, 24)
-  const oda = $('oda').value.trim()
-  if (!isim || !oda) { durum('Ad ve oda şifresi lazım'); return }
+  if (!isim) { durum('Adını yaz'); return }
   localStorage.setItem('isim', isim)
-  localStorage.setItem('oda', oda)
   sessionStorage.removeItem('cikti')
-  katil(isim, oda)
+  katil(isim, ODA)
 }
 // Buton sadece simge olduğu için Enter da giriş yapar.
-$('isim').onkeydown = $('oda').onkeydown = e => { if (e.key === 'Enter') $('katil').click() }
+$('isim').onkeydown = e => { if (e.key === 'Enter') $('katil').click() }
 
 // Otomatik giriş: daha önce girilmişse doğrudan odaya bağlan. "Çık"a basılan oturumda
 // (sayfa yenilense bile) otomatik girme; uygulama kapatılıp açılınca yine otomatik girer.
-if ($('isim').value && $('oda').value && !sessionStorage.getItem('cikti')) {
+if ($('isim').value && !sessionStorage.getItem('cikti')) {
   durum('Bağlanıyor...', false)
-  katil($('isim').value, $('oda').value)
+  katil($('isim').value, ODA)
 }
 
 async function katil(isim, oda) {
@@ -1226,7 +1224,7 @@ function sesArayuzu() {
   }
 }
 
-// Odadan tamamen çık (oda/isim değiştirmek için giriş ekranına döner). Ayarlar'daki buton.
+// Odadan tamamen çık (ismi değiştirmek için giriş ekranına döner). Ayarlar'daki buton.
 async function odadanCik() {
   // Bu oturumda otomatik girişi kapat; yoksa yenilenen sayfa hemen geri girerdi.
   sessionStorage.setItem('cikti', '1')
