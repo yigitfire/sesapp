@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Ses</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
 <style>
   /* Noto Sans (SIL OFL, vendor/noto-sans-LICENSE.txt). Uygulamanın içinde; internetten indirilmez.
      İkinci dosya sadece latin dışı Türkçe harfleri (ğ Ğ ş Ş İ) içerir. */
@@ -11,11 +12,16 @@
   @font-face{font-family:'Noto Sans';font-weight:100 900;font-display:block;src:url(vendor/noto-sans-tr.woff2) format('woff2');
     unicode-range:U+011E-011F,U+0130,U+015E-015F}
 
-  :root{--bg:#111214;--bg2:#17181a;--bg3:#1f2023;--bg4:#2a2b2f;--alt:#131416;
-        --yazi:#dcdde0;--soluk:#7d8088;--yesil:#3ccf6e;--kirmizi:#ed5555;--bas:#fff;color-scheme:dark}
+  /* Renkler logoyla uyumlu: nötr koyu zemin (#111111) + lime vurgu (#C6F432).
+     --lime: düğme zemini (iki temada da), üstündeki yazı koyu.
+     --vurgu: halka, seviye çubuğu, anahtar gibi ince vurgular; --vurguUst: vurgu üstündeki renk. */
+  :root{--bg:#111111;--bg2:#171717;--bg3:#1f1f1f;--bg4:#2a2a2a;--alt:#141414;
+        --yazi:#dcdcdc;--soluk:#808080;--lime:#c6f432;--vurgu:#c6f432;--vurguUst:#111111;
+        --kirmizi:#ed5555;--bas:#fff;color-scheme:dark}
   /* Açık tema (Ayarlar'dan). Sadece renk değişkenleri değişir. */
-  :root[data-tema=acik]{--bg:#f6f7f8;--bg2:#eceef1;--bg3:#e1e4e8;--bg4:#d0d4da;--alt:#e5e8ec;
-        --yazi:#1c1e22;--soluk:#6a6f78;--yesil:#22a052;--kirmizi:#d93b3b;--bas:#1c1e22;color-scheme:light}
+  /* Açık zeminde lime ince çizgi okunmaz; ince vurgular koyu zeytin yeşili. */
+  :root[data-tema=acik]{--bg:#f6f6f6;--bg2:#ececec;--bg3:#e2e2e2;--bg4:#d2d2d2;--alt:#e6e6e6;
+        --yazi:#1a1a1a;--soluk:#6b6b6b;--vurgu:#5f7f00;--vurguUst:#fff;--kirmizi:#d93b3b;--bas:#1a1a1a;color-scheme:light}
   *{box-sizing:border-box}
   body{margin:0;height:100vh;display:flex;background:var(--bg);color:var(--yazi);
        font:15px/1.4 'Noto Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
@@ -40,10 +46,10 @@
   /* Giriş */
   #giris{margin:auto;width:280px;display:flex;flex-direction:column;gap:10px}
   #logo{display:grid;place-items:center;margin-bottom:14px}
-  #logo .i{width:44px;height:44px;stroke-width:2.2}
+  #logo img{width:72px;height:72px;display:block}
   .satir{display:flex;gap:8px}
   .satir input{flex:1}
-  #katil{width:42px;border-radius:8px;display:grid;place-items:center;background:var(--yazi);color:var(--bg)}
+  #katil{width:42px;border-radius:8px;display:grid;place-items:center;background:var(--lime);color:#111111}
   #katil:hover{filter:brightness(1.15)}
   #katil:disabled{opacity:.4;cursor:default}
   #hata{min-height:20px;font-size:13px;text-align:center;color:var(--soluk)}
@@ -61,7 +67,7 @@
       font-size:14px;font-weight:600;color:#111;transition:box-shadow .1s;background-size:cover;background-position:center}
   /* Konuşanın halkası: 3 px yeşil, fotoğrafla arasında arka plan renginde 2 px boşluk
      (fotoğrafın üstünde de net seçilsin). Boşluğun rengi bulunduğu satırın rengidir. */
-  .konusuyor .av{box-shadow:0 0 0 2px var(--halkaArka,var(--bg2)),0 0 0 5px var(--yesil)}
+  .konusuyor .av{box-shadow:0 0 0 2px var(--halkaArka,var(--bg2)),0 0 0 5px var(--vurgu)}
   .kisi:hover{--halkaArka:var(--bg3)}
   #ben{--halkaArka:var(--alt)}
   .ad{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -84,7 +90,7 @@
   .sessiz #sesAlani{display:block}
   .sessiz #mute,.sessiz #cik,.sessiz #ben .bar,.sessiz #ben .ses{display:none}
   #seseKatil{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;border-radius:8px;
-             background:var(--yesil);color:#0b1a10;font-weight:600}
+             background:var(--lime);color:#111111;font-weight:600}
   #seseKatil:hover{filter:brightness(1.1)}
   #seseKatil:disabled{opacity:.5;cursor:default}
   #mikHata{padding:0 12px 8px;font-size:12px;text-align:center;color:var(--kirmizi)}
@@ -102,7 +108,7 @@
   #benIsim{flex:1;padding:4px 6px;margin-left:-4px;border-radius:6px;font-weight:600;background:transparent}
   #benIsim:hover,#benIsim:focus{background:var(--bg3);border-color:transparent}
   .bar{height:3px;margin-top:8px;border-radius:2px;background:var(--bg4);overflow:hidden}
-  .bar i{display:block;height:100%;width:0;background:var(--yesil)}
+  .bar i{display:block;height:100%;width:0;background:var(--vurgu)}
   #renkler{display:none;position:absolute;left:8px;right:8px;bottom:100%;margin-bottom:6px;padding:12px;border-radius:10px;
            background:var(--bg3);box-shadow:0 8px 24px #0008;grid-template-columns:repeat(6,1fr);gap:10px}
   #renkler.acik{display:grid}
@@ -175,7 +181,8 @@
   .anahtar input{-webkit-appearance:none;appearance:none;width:34px;height:20px;padding:0;margin:0;border:0;border-radius:10px;
                  background:var(--bg4);position:relative;cursor:pointer;transition:background .15s}
   .anahtar input::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s}
-  .anahtar input:checked{background:var(--yesil)}
+  .anahtar input:checked{background:var(--vurgu)}
+  .anahtar input:checked::after{background:var(--vurguUst)}
   .anahtar input:checked::after{transform:translateX(14px)}
   .profil{display:flex;align-items:center;gap:12px}
   #fotoOnizleme{width:52px;height:52px;font-size:20px;cursor:pointer;position:relative}
@@ -200,7 +207,6 @@
 <body>
 <!-- Simge çizimleri: Lucide (ISC lisansı, lucide.dev) -->
 <svg id="simgeler" aria-hidden="true">
-  <symbol id="i-dalga" viewBox="0 0 24 24"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></symbol>
   <symbol id="i-ok" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
   <symbol id="i-mik" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></symbol>
   <symbol id="i-mik-yok" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"/><path d="M5 10v2a7 7 0 0 0 12 5"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/><path d="M12 19v3"/></symbol>
@@ -218,7 +224,7 @@
 <div id="guncelleme"></div>
 
 <div id="giris">
-  <div id="logo"><svg class="i"><use href="#i-dalga"/></svg></div>
+  <div id="logo"><img src="logo.svg" alt="Ses"></div>
   <input id="isim" placeholder="Adın" maxlength="24">
   <div class="satir">
     <input id="oda" placeholder="Oda şifresi">
