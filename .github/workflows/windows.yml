@@ -1,9 +1,18 @@
-# Windows kurulum dosyasını (.exe) GitHub'ın Windows makinesinde derler ve
-# GitHub Releases'e koyar. Mac'ten Windows derlemesi alınamadığı için burada yapılıyor.
+# Windows sürümünü GitHub'ın Windows makinesinde derler ve GitHub Releases'e koyar.
+# Mac'ten Windows derlemesi alınamadığı için burada yapılıyor.
+#
+# İki dosya çıkar:
+#   Ses.exe          Kurulumsuz tek dosya: çift tıkla, açılsın. Arkadaşlara atılan bu.
+#                    (Arayüz exe'nin içine gömülü; ayarlar/geçmiş %LOCALAPPDATA%'da durur,
+#                    exe nereye taşınırsa taşınsın hesap aynı kalır.)
+#   Ses-Kurulum.exe  Klasik kurulum: Başlat menüsü kısayolu ister + WebView2 yoksa kurar.
 #
 # Yeni sürüm çıkarmak için: tauri.conf.json'daki "version"ı artır, sonra
-#   git tag v0.1.1 && git push origin v0.1.1
-# Sabit indirme linki her zaman en son sürümü verir:
+#   git tag v0.1.2 && git push origin v0.1.2
+# Var olan bir sürümün dosyalarını yeniden derleyip değiştirmek için: Actions'ta
+# "Windows" iş akışını elle çalıştır ve etiketi yaz.
+# Sabit indirme linkleri her zaman en son sürümü verir:
+#   https://github.com/yigitfire/sesapp/releases/latest/download/Ses.exe
 #   https://github.com/yigitfire/sesapp/releases/latest/download/Ses-Kurulum.exe
 name: Windows
 
@@ -11,6 +20,10 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      etiket:
+        description: "Dosyaları yüklenecek mevcut sürüm etiketi (örn. v0.1.1)"
+        required: true
 
 permissions:
   contents: write
@@ -18,8 +31,12 @@ permissions:
 jobs:
   derle:
     runs-on: windows-latest
+    env:
+      ETIKET: ${{ github.event.inputs.etiket || github.ref_name }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.ETIKET }}
 
       - uses: actions/setup-node@v7
         with:
@@ -30,30 +47,28 @@ jobs:
         with:
           workspaces: src-tauri
 
-      - name: Derle (NSIS kurulum dosyası)
+      - name: Derle
         working-directory: src-tauri
         run: npx --yes @tauri-apps/cli@2 build --bundles nsis
 
-      - name: Sabit isimli kopya
+      - name: Sabit isimli dosyalar
         shell: pwsh
         run: |
-          $exe = Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
-          Copy-Item $exe.FullName Ses-Kurulum.exe
-          Get-Item Ses-Kurulum.exe | Format-List Name, Length
-
-      - name: Derlemeyi sakla (etiketsiz elle çalıştırmada)
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: Ses-Kurulum
-          path: Ses-Kurulum.exe
+          Copy-Item src-tauri/target/release/sesapp.exe Ses.exe
+          $kurulum = Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          Copy-Item $kurulum.FullName Ses-Kurulum.exe
+          Get-Item Ses.exe, Ses-Kurulum.exe | Format-Table Name, Length
 
       - name: GitHub Release'e yükle
-        if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          gh release create "${{ github.ref_name }}" Ses-Kurulum.exe `
-            --title "Ses ${{ github.ref_name }}" `
-            --notes "Windows kurulum dosyası: Ses-Kurulum.exe. İlk açılışta Windows 'bilinmeyen yayımcı' uyarısı verirse: Ek bilgi -> Yine de çalıştır."
+          gh release view "$env:ETIKET" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload "$env:ETIKET" Ses.exe Ses-Kurulum.exe --clobber
+          } else {
+            gh release create "$env:ETIKET" Ses.exe Ses-Kurulum.exe `
+              --title "Ses $env:ETIKET" `
+              --notes "Ses.exe: kurulum yok, çift tıkla aç. İlk açılışta Windows uyarı verirse: Ek bilgi -> Yine de çalıştır."
+          }
