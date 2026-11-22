@@ -4,61 +4,152 @@
 <meta charset="utf-8">
 <title>Ses</title>
 <style>
-  body{margin:0;font-family:system-ui,sans-serif;background:#16181d;color:#e6e6e6;height:100vh;display:flex}
-  #giris{margin:auto;display:flex;flex-direction:column;gap:8px;width:260px}
-  input,button{padding:8px;border-radius:6px;border:1px solid #333;background:#22252c;color:#e6e6e6;font-size:14px}
-  button{cursor:pointer;background:#3b6cf6;border:none}
-  #app{display:none;flex:1}
-  #sol{width:260px;padding:12px;border-right:1px solid #2a2d35;display:flex;flex-direction:column;gap:10px;overflow:auto}
-  #sag{flex:1;display:flex;flex-direction:column}
-  #mesajlar{flex:1;overflow:auto;padding:12px;font-size:14px}
-  #mesajlar div{margin-bottom:6px;overflow-wrap:anywhere}
-  #mesajlar time{color:#6b7080;font-size:11px;margin-right:6px}
-  #sesUyari{display:none;margin:10px 12px 0;padding:8px;border-radius:6px;background:#3a2f12;color:#f5d047;font-size:13px;cursor:pointer}
-  #benIsim{width:100%;box-sizing:border-box;padding:4px 6px;font-weight:bold;background:transparent;border:1px solid transparent}
-  #benIsim:hover,#benIsim:focus{border-color:#333;background:#22252c;outline:none}
-  .renkler{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}
-  .renkler button{width:18px;height:18px;padding:0;border-radius:50%;border:2px solid transparent}
-  .renkler button.secili{border-color:#fff}
-  .kisi .ad{font-weight:bold}
-  #guncelleme{display:none;position:fixed;top:0;left:0;right:0;padding:8px;text-align:center;background:#3b6cf6;color:#fff;font-size:13px;z-index:9}
-  #yaz{display:flex;gap:6px;padding:10px;border-top:1px solid #2a2d35}
-  #yaz input{flex:1}
-  .kisi{background:#1d2026;padding:8px;border-radius:6px;font-size:13px}
-  .kisi.konusuyor{outline:2px solid #3ccf6e}
-  input[type=range]{width:100%;padding:0}
-  .bar{height:6px;background:#2a2d35;border-radius:3px;overflow:hidden}
-  .bar i{display:block;height:100%;width:0;background:#3ccf6e}
-  .kirmizi{background:#d64545}
+  /* Noto Sans (SIL OFL, vendor/noto-sans-LICENSE.txt). Uygulamanın içinde; internetten indirilmez.
+     İkinci dosya sadece latin dışı Türkçe harfleri (ğ Ğ ş Ş İ) içerir. */
+  @font-face{font-family:'Noto Sans';font-weight:100 900;font-display:block;src:url(vendor/noto-sans-latin.woff2) format('woff2');
+    unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+  @font-face{font-family:'Noto Sans';font-weight:100 900;font-display:block;src:url(vendor/noto-sans-tr.woff2) format('woff2');
+    unicode-range:U+011E-011F,U+0130,U+015E-015F}
+
+  :root{--bg:#111214;--bg2:#17181a;--bg3:#1f2023;--bg4:#2a2b2f;--alt:#131416;
+        --yazi:#dcdde0;--soluk:#7d8088;--yesil:#3ccf6e;--kirmizi:#ed5555;color-scheme:dark}
+  *{box-sizing:border-box}
+  body{margin:0;height:100vh;display:flex;background:var(--bg);color:var(--yazi);
+       font:15px/1.4 'Noto Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
+  input{font:inherit;color:inherit;background:var(--bg3);border:1px solid transparent;border-radius:8px;padding:10px 12px;outline:none;min-width:0}
+  input:focus{border-color:#34363b}
+  ::placeholder{color:var(--soluk)}
+  button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+
+  /* Simgeler: aşağıdaki <symbol>'lerden çizilir, rengi yazı renginden alır. */
+  .i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+  .ib{width:32px;height:32px;flex:none;display:grid;place-items:center;border-radius:6px;color:var(--soluk)}
+  .ib:hover{background:var(--bg4);color:var(--yazi)}
+  .ib.kapali,.ib.kapali:hover{color:var(--kirmizi)}
+  .ib.tehlike:hover{color:var(--kirmizi)}
+  .ib.k{width:26px;height:26px}
+  .ib.k .i{width:16px;height:16px}
+
+  /* Giriş */
+  #giris{margin:auto;width:280px;display:flex;flex-direction:column;gap:10px}
+  #logo{display:grid;place-items:center;margin-bottom:14px}
+  #logo .i{width:44px;height:44px;stroke-width:2.2}
+  .satir{display:flex;gap:8px}
+  .satir input{flex:1}
+  #katil{width:42px;border-radius:8px;display:grid;place-items:center;background:var(--yazi);color:var(--bg)}
+  #katil:hover{background:#fff}
+  #katil:disabled{opacity:.4;cursor:default}
+  #hata{min-height:20px;font-size:13px;text-align:center;color:var(--soluk)}
+  #hata.hata{color:var(--kirmizi)}
+
+  #app{display:none;flex:1;min-width:0}
+
+  /* Sol: kişiler + alttaki kendi panelim */
+  #sol{width:240px;flex:none;display:flex;flex-direction:column;background:var(--bg2)}
+  #kisiler{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:2px}
+  .kisi{padding:6px 8px;border-radius:8px}
+  .kisi:hover{background:var(--bg3)}
+  .ust{display:flex;align-items:center;gap:10px}
+  .av{width:32px;height:32px;flex:none;border-radius:50%;display:grid;place-items:center;
+      font-size:14px;font-weight:600;color:#111;transition:box-shadow .1s}
+  .konusuyor .av{box-shadow:0 0 0 2px var(--yesil)}
+  .ad{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ses{display:none;align-items:center;gap:8px;margin-top:6px;padding-left:2px}
+  /* Arkadaşın kaydırıcısı üstüne gelince açılır; kendi panelim alta yapışık olduğu için
+     orada hep açık (açılıp kapanırsa panel yukarı zıplar). */
+  .kisi:hover .ses,#ben .ses{display:flex}
+  .yuzde{width:30px;text-align:right;font-size:12px;color:var(--soluk);font-variant-numeric:tabular-nums}
+  .sus{opacity:0}
+  .kisi:hover .sus,.susturuldu .sus{opacity:1}
+  .susturuldu .ad{opacity:.5}
+  .susturuldu .sus{color:var(--kirmizi)}
+
+  input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:4px;padding:0;border:0;border-radius:2px;cursor:pointer;
+    background:linear-gradient(var(--yazi),var(--yazi)) 0/var(--p,50%) 100% no-repeat,var(--bg4)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#fff}
+  input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radius:50%;background:#fff}
+  input[type=range]::-moz-range-track{background:transparent}
+
+  #ben{position:relative;padding:8px;background:var(--alt)}
+  #benAv{cursor:pointer}
+  #benIsim{flex:1;padding:4px 6px;margin-left:-4px;border-radius:6px;font-weight:600;background:transparent}
+  #benIsim:hover,#benIsim:focus{background:var(--bg3);border-color:transparent}
+  .bar{height:3px;margin-top:8px;border-radius:2px;background:var(--bg4);overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:var(--yesil)}
+  #renkler{display:none;position:absolute;left:8px;right:8px;bottom:100%;margin-bottom:6px;padding:12px;border-radius:10px;
+           background:var(--bg3);box-shadow:0 8px 24px #0008;grid-template-columns:repeat(6,1fr);gap:10px}
+  #renkler.acik{display:grid}
+  #renkler button{aspect-ratio:1;border-radius:50%;outline:2px solid transparent;outline-offset:2px}
+  #renkler button.secili{outline-color:#fff}
+
+  /* Sağ: sohbet */
+  #sag{flex:1;min-width:0;display:flex;flex-direction:column}
+  #mesajlar{flex:1;overflow:auto;padding:16px 20px 8px;user-select:text;-webkit-user-select:text}
+  .msj{padding:1px 0;overflow-wrap:anywhere}
+  .msj.bas{margin-top:14px}
+  .msj.bas:first-child{margin-top:0}
+  .msj .kim{display:flex;align-items:baseline;gap:8px}
+  .msj .kim b{font-weight:600}
+  .msj time{font-size:11px;color:var(--soluk)}
+  #yaz{display:flex;align-items:center;margin:0 16px 16px;padding-right:4px;border-radius:10px;background:var(--bg3)}
+  #yaz input{flex:1;padding:12px 14px;background:transparent;border:0}
+  #sesUyari{display:none;margin:12px 16px 0;padding:8px 12px;border-radius:8px;background:#2a2410;color:#f5d047;font-size:13px;cursor:pointer}
+  #guncelleme{display:none;position:fixed;top:0;left:0;right:0;z-index:9;padding:6px;text-align:center;font-size:13px;background:var(--bg4)}
+
+  ::-webkit-scrollbar{width:8px}
+  ::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px}
+  ::-webkit-scrollbar-track{background:transparent}
 </style>
 </head>
 <body>
+<!-- Simge çizimleri: Lucide (ISC lisansı, lucide.dev) -->
+<svg style="display:none">
+  <symbol id="i-dalga" viewBox="0 0 24 24"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></symbol>
+  <symbol id="i-ok" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+  <symbol id="i-mik" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></symbol>
+  <symbol id="i-mik-yok" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"/><path d="M5 10v2a7 7 0 0 0 12 5"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/><path d="M12 19v3"/></symbol>
+  <symbol id="i-hop" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.4 18.4a9 9 0 0 0 0-12.8"/></symbol>
+  <symbol id="i-hop-yok" viewBox="0 0 24 24"><path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6a1.4 1.4 0 0 1-1 .4H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="m22 9-6 6"/><path d="m16 9 6 6"/></symbol>
+  <symbol id="i-gonder" viewBox="0 0 24 24"><path d="M14.5 21.7a.5.5 0 0 0 .9 0l6.5-19a.5.5 0 0 0-.6-.6l-19 6.5a.5.5 0 0 0 0 .9l7.9 3.2a2 2 0 0 1 1.1 1.1z"/><path d="m21.9 2.1-11 11"/></symbol>
+  <symbol id="i-cik" viewBox="0 0 24 24"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></symbol>
+</svg>
+
 <div id="guncelleme"></div>
 
 <div id="giris">
-  <input id="isim" placeholder="Adın">
-  <input id="oda" placeholder="Oda şifresi (herkes aynısını yazsın)">
-  <button id="katil">Katıl</button>
-  <div id="hata" style="color:#ff7b7b;font-size:13px"></div>
+  <div id="logo"><svg class="i"><use href="#i-dalga"/></svg></div>
+  <input id="isim" placeholder="Adın" maxlength="24">
+  <div class="satir">
+    <input id="oda" placeholder="Oda şifresi">
+    <button id="katil" title="Katıl"><svg class="i"><use href="#i-ok"/></svg></button>
+  </div>
+  <div id="hata"></div>
 </div>
 
 <div id="app">
   <div id="sol">
-    <div class="kisi" id="ben">
-      <input id="benIsim" maxlength="24" title="İsmini değiştirmek için tıkla">
-      <div class="renkler" id="renkler"></div>
-      <div>Mikrofon: <span id="micYuzde">100</span>%</div>
-      <input type="range" id="micGain" min="0" max="200" value="100">
-      <div class="bar"><i id="micBar"></i></div>
-      <button id="mute" style="margin-top:6px;width:100%">Mikrofonu kapat</button>
-    </div>
     <div id="kisiler"></div>
-    <button id="cik" class="kirmizi">Çık</button>
+    <div id="ben">
+      <div id="renkler"></div>
+      <div class="ust">
+        <button class="av" id="benAv" title="Rengini seç"></button>
+        <input id="benIsim" maxlength="24" title="İsmini değiştir">
+        <button class="ib" id="mute" title="Mikrofonu kapat"><svg class="i"><use href="#i-mik"/></svg></button>
+        <button class="ib tehlike" id="cik" title="Çık"><svg class="i"><use href="#i-cik"/></svg></button>
+      </div>
+      <div class="bar"><i id="micBar"></i></div>
+      <div class="ses" title="Mikrofon seviyesi">
+        <input type="range" id="micGain" min="0" max="200" value="100"><span class="yuzde" id="micYuzde">100</span>
+      </div>
+    </div>
   </div>
   <div id="sag">
-    <div id="sesUyari">Sesi açmak için buraya tıkla</div>
+    <div id="sesUyari">Sesi açmak için tıkla</div>
     <div id="mesajlar"></div>
-    <div id="yaz"><input id="mesaj" placeholder="Mesaj yaz..."><button id="gonder">Gönder</button></div>
+    <div id="yaz">
+      <input id="mesaj" placeholder="Mesaj yaz">
+      <button class="ib" id="gonder" title="Gönder"><svg class="i"><use href="#i-gonder"/></svg></button>
+    </div>
   </div>
 </div>
 
@@ -82,6 +173,9 @@ const kaydet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } ca
 // bu kimliğe bağlı; isim/renk değişince eski mesajlar da yeni isim/renkle görünür.
 // profiller: userId -> {isim, renk, g}. g: sahibinin son değiştirdiği an (yenisi kazanır).
 const profiller = oku('profiller', {})
+// Kişi başı ses ayarı, sadece bu cihazda: userId -> {v: 0-200, s: susturuldu mu}.
+// Kimliğe bağlı olduğu için kişi ismini değiştirse de ayar kalır.
+const sesler = oku('sesler', {})
 let gecmis = []          // [{id, u: userId, t: metin, z: zaman}]
 let gecmisAnahtari = ''  // her odanın geçmişi ayrı saklanır
 
@@ -97,6 +191,13 @@ const varsayilanRenk = id => {
 }
 const isimAl = id => profiller[id]?.isim || 'Biri'
 const renkAl = id => gecerliRenk(profiller[id]?.renk) || varsayilanRenk(id)
+const basHarf = id => [...isimAl(id)][0].toLocaleUpperCase('tr-TR')
+
+// Simge düğmesinin içini değiştirir (ör. mikrofon açık/kapalı).
+const simge = (el, ad) => el.innerHTML = `<svg class="i"><use href="#i-${ad}"/></svg>`
+// Kaydırıcının dolu kısmını boyar (CSS --p değişkeni).
+const boya = r => r.style.setProperty('--p', r.value / r.max * 100 + '%')
+const durum = (metin, hata = true) => { $('hata').textContent = metin; $('hata').classList.toggle('hata', hata) }
 
 $('isim').value = localStorage.getItem('isim') || ''
 $('oda').value = localStorage.getItem('oda') || ''
@@ -110,17 +211,19 @@ if (masaustu) window.__TAURI__.event.listen('guncelleme', e => {
 $('katil').onclick = () => {
   const isim = $('isim').value.trim().slice(0, 24)
   const oda = $('oda').value.trim()
-  if (!isim || !oda) { $('hata').textContent = 'Ad ve oda şifresi lazım'; return }
+  if (!isim || !oda) { durum('Ad ve oda şifresi lazım'); return }
   localStorage.setItem('isim', isim)
   localStorage.setItem('oda', oda)
   sessionStorage.removeItem('cikti')
   katil(isim, oda)
 }
+// Buton sadece simge olduğu için Enter da giriş yapar.
+$('isim').onkeydown = $('oda').onkeydown = e => { if (e.key === 'Enter') $('katil').click() }
 
 // Otomatik giriş: daha önce girilmişse doğrudan odaya bağlan. "Çık"a basılan oturumda
 // (sayfa yenilense bile) otomatik girme; uygulama kapatılıp açılınca yine otomatik girer.
 if ($('isim').value && $('oda').value && !sessionStorage.getItem('cikti')) {
-  $('hata').textContent = 'Bağlanıyor...'
+  durum('Bağlanıyor...', false)
   katil($('isim').value, $('oda').value)
 }
 
@@ -139,7 +242,7 @@ async function katil(isim, oda) {
   try {
     micKaynak = masaustu ? await masaustuMikrofon(ctx) : await tarayiciMikrofon(ctx)
   } catch (e) {
-    $('hata').textContent = masaustu ? 'Mikrofon açılamadı: ' + e : 'Mikrofon izni verilmedi'
+    durum(masaustu ? 'Mikrofon açılamadı: ' + e : 'Mikrofon izni verilmedi')
     $('katil').disabled = false
     ctx.close()
     return
@@ -154,22 +257,29 @@ async function katil(isim, oda) {
   const gidenSes = cikis.stream
 
   let kapali = false
+  boya($('micGain'))
   $('micGain').oninput = e => {
     $('micYuzde').textContent = e.target.value
+    boya(e.target)
     if (!kapali) micGain.gain.value = e.target.value / 100
   }
   $('mute').onclick = () => {
     kapali = !kapali
     micGain.gain.value = kapali ? 0 : $('micGain').value / 100
-    $('mute').textContent = kapali ? 'Mikrofonu aç' : 'Mikrofonu kapat'
-    $('mute').classList.toggle('kirmizi', kapali)
+    simge($('mute'), kapali ? 'mik-yok' : 'mik')
+    $('mute').title = kapali ? 'Mikrofonu aç' : 'Mikrofonu kapat'
+    $('mute').classList.toggle('kapali', kapali)
   }
-  seviyeIzle(micAnaliz, v => $('micBar').style.width = Math.min(100, v * 300) + '%')
+  // Seviye kazançtan sonra ölçülür; mikrofon kapalıyken 0 olur, halka yanmaz.
+  seviyeIzle(micAnaliz, v => {
+    $('micBar').style.width = Math.min(100, v * 300) + '%'
+    $('ben').classList.toggle('konusuyor', v > 0.04)
+  })
 
   room = joinRoom({appId: 'yigit-ses-app-2026', password: oda, maxUsers: 6}, oda)
 
   room.onError(err => {
-    if (err.code === 'room-full') $('hata').textContent = 'Oda dolu (max 6 kişi)'
+    if (err.code === 'room-full') durum('Oda dolu (max 6 kişi)')
   })
 
   benimId = (await room.getSelf()).userId
@@ -251,18 +361,22 @@ async function katil(isim, oda) {
   $('benIsim').onchange = isimKaydet
   $('benIsim').onkeydown = e => { if (e.key === 'Enter') $('benIsim').blur() }
 
-  // Renk seçimi
+  // Renk seçimi: kendi yuvarlağına tıklayınca 12 renk açılır, dışarı tıklayınca kapanır.
   for (const r of RENKLER) {
     const b = document.createElement('button')
     b.style.background = r
     b.dataset.renk = r
-    b.title = 'Rengini seç'
     b.onclick = () => {
       localStorage.setItem('renk', r)
       benimProfilimiYay({renk: r})
+      $('renkler').classList.remove('acik')
     }
     $('renkler').appendChild(b)
   }
+  $('benAv').onclick = e => { e.stopPropagation(); $('renkler').classList.toggle('acik') }
+  document.addEventListener('pointerdown', e => {
+    if (!$('renkler').contains(e.target) && e.target !== $('benAv')) $('renkler').classList.remove('acik')
+  })
   benimKartimiCiz()
 
   $('cik').onclick = async () => {
@@ -286,7 +400,8 @@ function benimProfilimiYay(degisen) {
 
 function benimKartimiCiz() {
   const renk = renkAl(benimId)
-  $('benIsim').style.color = renk
+  $('benAv').style.background = renk
+  $('benAv').textContent = basHarf(benimId)
   for (const b of $('renkler').children) b.classList.toggle('secili', b.dataset.renk === renk)
 }
 
@@ -349,28 +464,44 @@ function kisiEkle(userId) {
   if (kisiler.has(userId)) return kisiler.get(userId).el
   const el = document.createElement('div')
   el.className = 'kisi'
-  el.innerHTML = `<div class="ad">...</div>
-    <div>Ses: <span class="yuzde">100</span>%</div>
-    <input type="range" min="0" max="200" value="100">`
+  el.innerHTML = `<div class="ust"><span class="av"></span><span class="ad">...</span>
+      <button class="ib k sus"></button></div>
+    <div class="ses"><input type="range" min="0" max="200"><span class="yuzde"></span></div>`
   $('kisiler').appendChild(el)
   const gain = ctx.createGain()
   gain.connect(ctx.destination)
-  el.querySelector('input').oninput = e => {
-    gain.gain.value = e.target.value / 100
-    el.querySelector('.yuzde').textContent = e.target.value
+  const kaydirici = el.querySelector('input'), sus = el.querySelector('.sus')
+
+  // Kayıtlı ayar varsa onunla başla. Sustur kaydırıcıyı değiştirmez; açınca eski seviyeye döner.
+  const ayar = {v: 100, s: false, ...sesler[userId]}
+  const uygula = () => {
+    gain.gain.value = ayar.s ? 0 : ayar.v / 100
+    kaydirici.value = ayar.v
+    boya(kaydirici)
+    el.querySelector('.yuzde').textContent = ayar.v
+    el.classList.toggle('susturuldu', ayar.s)
+    simge(sus, ayar.s ? 'hop-yok' : 'hop')
+    sus.title = ayar.s ? 'Sesini aç' : 'Sustur'
   }
+  const sakla = () => { sesler[userId] = {v: ayar.v, s: ayar.s}; kaydet('sesler', sesler); uygula() }
+  // Kaydırıcıyı oynatmak susturmayı da kaldırır (sesini duymak istediği belli).
+  kaydirici.oninput = () => { ayar.v = Number(kaydirici.value); ayar.s = false; sakla() }
+  sus.onclick = () => { ayar.s = !ayar.s; sakla() }
+  uygula()
+
   kisiler.set(userId, {el, gain})
   kisiGuncelle(userId)
   return el
 }
 
-// Kişi kartındaki isim ve rengi profile göre yeniler.
+// Kişi kartındaki isim, baş harf ve rengi profile göre yeniler.
 function kisiGuncelle(userId) {
   const k = kisiler.get(userId)
   if (!k || !profiller[userId]) return
-  const ad = k.el.querySelector('.ad')
-  ad.textContent = isimAl(userId)
-  ad.style.color = renkAl(userId)
+  k.el.querySelector('.ad').textContent = isimAl(userId)
+  const av = k.el.querySelector('.av')
+  av.textContent = basHarf(userId)
+  av.style.background = renkAl(userId)
 }
 
 // Tarayıcılar, kullanıcı bir yere tıklamadan sesi başlatmayabilir (otomatik girişte
@@ -428,22 +559,37 @@ function seviyeIzle(analiz, cb) {
 }
 
 // Bütün geçmişi çizer. İsimler/renkler çizim anında profilden alınır; biri ismini
-// değiştirince eski mesajları da yeni isimle görünür. En fazla 1000 satır, hızlı.
+// değiştirince eski mesajları da yeni isimle görünür. Aynı kişinin 5 dakika içindeki
+// art arda mesajları tek başlık altında toplanır (isim tekrar tekrar yazılmaz).
 function mesajlariCiz() {
   const kutu = $('mesajlar')
   const alttaydi = kutu.scrollHeight - kutu.scrollTop - kutu.clientHeight < 40
   const bugun = new Date().toDateString()
+  let onceki
   kutu.replaceChildren(...gecmis.map(m => {
     const d = document.createElement('div')
-    const zaman = document.createElement('time')
+    d.className = 'msj'
     const tarih = new Date(m.z)
-    zaman.textContent = (tarih.toDateString() === bugun ? '' :
-      tarih.toLocaleDateString('tr-TR', {day: '2-digit', month: '2-digit'}) + ' ') +
-      tarih.toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'})
-    const b = document.createElement('b')
-    b.textContent = isimAl(m.u) + ': '
-    b.style.color = renkAl(m.u)
-    d.append(zaman, b, document.createTextNode(m.t))
+    const ayniGrup = onceki && onceki.u === m.u && m.z - onceki.z < 5 * 60e3 &&
+      new Date(onceki.z).toDateString() === tarih.toDateString()
+    onceki = m
+    if (!ayniGrup) {
+      d.classList.add('bas')
+      const kim = document.createElement('div')
+      kim.className = 'kim'
+      const b = document.createElement('b')
+      b.textContent = isimAl(m.u)
+      b.style.color = renkAl(m.u)
+      const zaman = document.createElement('time')
+      zaman.textContent = (tarih.toDateString() === bugun ? '' :
+        tarih.toLocaleDateString('tr-TR', {day: '2-digit', month: '2-digit'}) + ' ') +
+        tarih.toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'})
+      kim.append(b, zaman)
+      d.append(kim)
+    }
+    const t = document.createElement('div')
+    t.textContent = m.t
+    d.append(t)
     return d
   }))
   if (alttaydi) kutu.scrollTop = 1e9
