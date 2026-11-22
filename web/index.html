@@ -136,7 +136,14 @@
   .uye.cevrimdisi{opacity:.4}
   .uye.cevrimdisi .ad{color:var(--yazi)!important}
   /* Pencere daralınca sohbete yer kalsın diye üye listesi gizlenir. */
-  @media (max-width:760px){#uyeler{display:none}}
+  @media (max-width:760px){#uyeler,#sagTutamak{display:none}}
+
+  /* Sütunlar arasındaki çekme tutamağı: kenardan çekip sol/sağ sütunu genişlet-daralt.
+     Yer kaplamaz (eksi kenar boşluğu), üstüne gelince ince bir çizgi görünür. */
+  .tutamak{flex:none;width:6px;margin:0 -3px;position:relative;z-index:2;cursor:col-resize}
+  .tutamak::after{content:'';position:absolute;top:0;bottom:0;left:2px;width:2px;background:var(--vurgu);opacity:0;transition:opacity .15s}
+  .tutamak:hover::after,.tutamak.surukleniyor::after{opacity:.6}
+  body.surukleniyor{cursor:col-resize;user-select:none;-webkit-user-select:none}
 
   /* Sağ: sohbet */
   #sag{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
@@ -262,6 +269,7 @@
       </div>
     </div>
   </div>
+  <div class="tutamak" id="solTutamak" title="Çekerek genişlet / daralt (çift tıkla: eski haline)"></div>
   <div id="sag">
     <div id="sesUyari">Sesi açmak için tıkla</div>
     <div id="mesajlar"></div>
@@ -276,6 +284,7 @@
       <div class="klipy">Powered by KLIPY</div>
     </div>
   </div>
+  <div class="tutamak" id="sagTutamak" title="Çekerek genişlet / daralt (çift tıkla: eski haline)"></div>
   <div id="uyeler"></div>
 </div>
 
@@ -392,6 +401,32 @@ $('ayarKapat').onclick = ayarKapat
 $('ayarlar').onclick = e => { if (e.target === $('ayarlar')) ayarKapat() }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') ayarKapat() })
 $('odadanCik').onclick = () => odadanCik()
+
+// Sütun genişliği: kenardaki tutamaktan çekilerek değişir, bu cihazda saklanır.
+// Çift tıklayınca varsayılana döner. Sohbete en az 300 px kalır.
+function kenarCekme(tutamak, sutun, diger, anahtar, enAz, enCok, yon) {
+  const sinirla = w => Math.round(Math.max(enAz, Math.min(w, enCok,
+    innerWidth - 300 - diger.getBoundingClientRect().width)))
+  const kayitli = Number(oku(anahtar, 0))
+  if (kayitli) sutun.style.width = sinirla(kayitli) + 'px'
+  tutamak.onpointerdown = e => {
+    e.preventDefault()
+    tutamak.setPointerCapture(e.pointerId)
+    tutamak.classList.add('surukleniyor')
+    document.body.classList.add('surukleniyor')
+    const bas = e.clientX, ilk = sutun.getBoundingClientRect().width
+    tutamak.onpointermove = e2 => { sutun.style.width = sinirla(ilk + yon * (e2.clientX - bas)) + 'px' }
+    tutamak.onpointerup = tutamak.onpointercancel = () => {
+      tutamak.onpointermove = null
+      tutamak.classList.remove('surukleniyor')
+      document.body.classList.remove('surukleniyor')
+      kaydet(anahtar, Math.round(sutun.getBoundingClientRect().width))
+    }
+  }
+  tutamak.ondblclick = () => { sutun.style.width = ''; kaydet(anahtar, 0) }
+}
+kenarCekme($('solTutamak'), $('sol'), $('uyeler'), 'solGenislik', 180, 400, 1)
+kenarCekme($('sagTutamak'), $('uyeler'), $('sol'), 'sagGenislik', 160, 360, -1)
 // Masaüstünde uygulamanın sürümü (tauri.conf.json'daki), tarayıcıda "Web".
 if (masaustu) window.__TAURI__.app.getVersion().then(v => { $('surum').textContent = 'Sürüm ' + v }).catch(() => {})
 
@@ -995,10 +1030,14 @@ function uyeleriCiz() {
     // Üyeler: son görülmesi bilinen herkes + şu an bağlı olanlar + bu odada mesaj yazmış olanlar.
     const hepsi = new Set([...Object.keys(uyeler), ...kisiler.keys(), ...gecmis.map(m => m.u), benimId])
     hepsi.delete('')
+    // Son görülme: kaydedilen an ile son mesajının saatinden hangisi yeniyse. Son görülme
+    // kaydı 0.1.10'da başladı; ondan önce çevrimiçi olanlar için en azından son mesajı bilinir.
+    const son = {...uyeler}
+    for (const m of gecmis) if (m.z > (son[m.u] || 0)) son[m.u] = Math.min(m.z, Date.now())
     const acik = [], kapali = []
     for (const id of hepsi) (id === benimId || kisiler.has(id) ? acik : kapali).push(id)
     acik.sort((a, b) => isimAl(a).localeCompare(isimAl(b), 'tr'))
-    kapali.sort((a, b) => (uyeler[b] || 0) - (uyeler[a] || 0))
+    kapali.sort((a, b) => (son[b] || 0) - (son[a] || 0))
     const parca = []
     const bolum = (baslik, liste, cevrimici) => {
       if (!liste.length) return
@@ -1014,10 +1053,10 @@ function uyeleriCiz() {
         const ad = el.querySelector('.ad')
         ad.textContent = isimAl(id) + (id === benimId ? ' (sen)' : '')
         ad.style.color = renkAl(id)
-        if (!cevrimici && uyeler[id]) {
+        if (!cevrimici && son[id]) {
           const z = document.createElement('span')
           z.className = 'zaman'
-          z.textContent = neZaman(uyeler[id])
+          z.textContent = neZaman(son[id])
           el.querySelector('.uyeYazi').append(z)
         }
         parca.push(el)
