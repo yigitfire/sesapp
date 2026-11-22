@@ -166,6 +166,8 @@
   #hassasKutu small{display:block;margin-top:6px;font-size:11px;line-height:1.35;color:var(--soluk)}
   #hassasKutu[hidden]{display:none}
   #hassasDeger{float:right;font-variant-numeric:tabular-nums}
+  #yankiNot{display:block;margin-top:4px;font-size:11px;line-height:1.35;color:var(--soluk)}
+  #yankiNot[hidden]{display:none}
   /* Arkadaşın kaydırıcısı üstüne gelince açılır. */
   .kisi:hover .ses{display:flex}
   .yuzde{width:30px;text-align:right;font-size:12px;color:var(--soluk);font-variant-numeric:tabular-nums}
@@ -517,6 +519,8 @@
           <div id="hassasCubuk" title="Çizgiyi sürükle: solundaki (daha kısık) sesler gönderilmez"><div class="iz"><i id="hassasSeviye"></i></div><input type="range" id="hassasEsik" min="-80" max="-10" step="1" value="-50"></div>
           <small>Konuşunca çubuk yeşil yanıyorsa sesin gidiyor. Çizgiyi, konuşmanın biraz altına, yankının/arka plan sesinin üstüne koy. <span id="hassasDeger"></span></small>
         </div>
+        <label class="anahtar" title="Hoparlörden dinliyorsan aç: başkalarının sesi hoparlöründen mikrofonuna girip onlara yankı olarak dönmez. Başkaları konuşurken mikrofonun, senin sesin açıkça daha yüksek değilse kısılır. Kulaklıkla gerek yok.">Yankı bastırma<input type="checkbox" id="yankiAcik"></label>
+        <small id="yankiNot" hidden>Hoparlörle konuşanlar için. İkiniz tam aynı anda konuşursanız sesin kısa kısa kesilebilir. Kulaklık takıyorsan kapat.</small>
       </div>
       <div class="menu" id="kulakMenu">
         <h4>Çıkış ses seviyesi</h4>
@@ -1033,10 +1037,25 @@ async function katil(isim, oda) {
   // ayarlarken sesini görebilsin), konuşma halkası kapıdan sonra (sadece giden ses yakar).
   micKapi = kapiOlustur()
   const gidenAnaliz = ctx.createAnalyser()
-  if (micKapi) sinirla.connect(micKapi).connect(cikis)
-  else sinirla.connect(cikis)
-  ;(micKapi || sinirla).connect(gidenAnaliz)
+  // Yankı bastırıcı: 1. giriş mikrofon (kapıdan sonra), 2. giriş hoparlörden çalan her şey
+  // (herkesin sesi + panel/giriş sesleri).
+  yankiRef = ctx.createGain()
+  if (kapiHazir) {
+    try { yankiDugumu = new AudioWorkletNode(ctx, 'yanki-bastirici', {numberOfInputs: 2}) }
+    catch (e) { sesKaydi('yankı bastırıcı kurulamadı:', e?.message || e) }
+  }
+  let son = sinirla
+  if (micKapi) son = son.connect(micKapi)
+  if (yankiDugumu) { son = son.connect(yankiDugumu, 0, 0); yankiRef.connect(yankiDugumu, 0, 1) }
+  son.connect(cikis)
+  son.connect(gidenAnaliz)
   girisHassasiyetiUygula()
+  yankiUygula()
+  $('yankiAcik').onchange = () => {
+    yankiBastirma = $('yankiAcik').checked
+    kaydet('yankiBastirma', yankiBastirma)
+    yankiUygula()
+  }
   $('hassasAcik').onchange = () => {
     girisHassasiyeti.acik = $('hassasAcik').checked
     kaydet('girisHassasiyeti', girisHassasiyeti)
@@ -1052,6 +1071,7 @@ async function katil(isim, oda) {
   dinleme = ctx.createGain()
   dinleme.gain.value = 0
   dinleme.connect(ctx.destination)
+  dinleme.connect(yankiRef)
   mikKazanci()
 
   seviyeBagla($('micGain'), $('micYuzde'), girisSeviyesi, v => { girisSeviyesi = v; kaydet('girisSeviye', v); mikKazanci() })
@@ -1995,6 +2015,14 @@ const sesDb = v => 20 * Math.log10(Math.max(v, 1e-6))
 const girisHassasiyeti = {acik: false, esik: -50, ...oku('girisHassasiyeti', {})}
 girisHassasiyeti.esik = Math.min(-10, Math.max(HASSAS_EN_AZ, Number(girisHassasiyeti.esik) || -50))
 let micKapi = null
+// Yankı bastırma (giden ses), bu cihazda. Hoparlörden çalan ses (yankiRef) karşılaştırma için.
+let yankiBastirma = oku('yankiBastirma', false) === true
+let yankiDugumu = null, yankiRef = null
+function yankiUygula() {
+  yankiDugumu?.parameters.get('acik').setValueAtTime(yankiBastirma ? 1 : 0, ctx.currentTime)
+  $('yankiAcik').checked = yankiBastirma
+  $('yankiNot').hidden = !yankiBastirma
+}
 function girisHassasiyetiUygula() {
   micKapi?.parameters.get('esik').setValueAtTime(girisHassasiyeti.acik ? girisHassasiyeti.esik : KAPI_KAPALI, ctx.currentTime)
   $('hassasAcik').checked = girisHassasiyeti.acik
@@ -2608,6 +2636,7 @@ function efektHatti() {
   const s = ctx.createDynamicsCompressor()
   s.threshold.value = -6; s.knee.value = 3; s.ratio.value = 20; s.attack.value = .002; s.release.value = .15
   s.connect(ctx.destination)
+  if (yankiRef) s.connect(yankiRef)
   return efektCikisi = s
 }
 function efektleriDurdur() {
