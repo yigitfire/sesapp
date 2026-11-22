@@ -41,11 +41,9 @@
 <script>
   const {invoke} = window.__TAURI__.core
   const kutu = document.getElementById('kutu')
-  const SURE = 5000
-  let zamanlayici, acik = false, ustunde = false
-
-  const kapat = () => { acik = false; clearTimeout(zamanlayici); invoke('bildirim_kapat') }
-  const kur = ms => { clearTimeout(zamanlayici); zamanlayici = setTimeout(kapat, ms) }
+  // Ne zaman kapanacağına Rust karar verir (Mac bu pencerenin zamanlayıcılarını yavaşlatıyor).
+  let acik = false, ustunde = false
+  window.__TAURI__.event.listen('kapandi', () => { acik = ustunde = false })
 
   // veri: {ad, renk, harf, foto, ne, metin}
   window.__TAURI__.event.listen('bildirim', ({payload: v}) => {
@@ -60,12 +58,13 @@
     if (!acik) { kutu.classList.remove('yeni'); void kutu.offsetWidth; kutu.classList.add('yeni') }
     acik = true
     invoke('bildirim_ac')
-    if (!ustunde) kur(SURE)
   })
-  // Fare üstündeyken kapanmaz; çekilince kısa süre sonra kapanır.
-  document.body.addEventListener('mouseenter', () => { ustunde = true; clearTimeout(zamanlayici) })
-  document.body.addEventListener('mouseleave', () => { ustunde = false; if (acik) kur(1500) })
-  document.body.addEventListener('click', () => { acik = false; clearTimeout(zamanlayici); invoke('bildirim_tikla') })
+  // Fare üstündeyken kapanmaz; çekilince kısa süre sonra kapanır. "Üstünde" sayılması için fare
+  // gerçekten hareket etmeli: Mac pencere köşeye taşınırken sahte giriş/çıkış olayı gönderiyor,
+  // o yüzden bildirim 5 sn dolmadan kapanıyordu.
+  document.body.addEventListener('mousemove', () => { if (acik && !ustunde) { ustunde = true; invoke('bildirim_bekle') } })
+  document.body.addEventListener('mouseleave', () => { if (acik && ustunde) { ustunde = false; invoke('bildirim_birak') } })
+  document.body.addEventListener('click', () => { acik = false; invoke('bildirim_tikla') })
 </script>
 </body>
 </html>

@@ -6,6 +6,9 @@
 //! gelince ekrana taşınır, bitince yine dışarı taşınır. Taşımak odağı değiştirmez.
 //! Pencere ayrıca hiç odak alamaz (focusable false), görev çubuğunda görünmez ve hep üsttedir.
 
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Duration;
+
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder};
 
 const ETIKET: &str = "bildirim";
@@ -13,6 +16,26 @@ const GENISLIK: f64 = 340.0;
 const YUKSEKLIK: f64 = 76.0;
 const KENAR: f64 = 16.0;
 const DISARI: i32 = -32_000;
+/// Bildirim ekranda kaç ms kalır.
+const SURE_MS: u64 = 5_000;
+/// Fare bildirimden çekilince kaç ms sonra kapanır.
+const BIRAKINCA_MS: u64 = 1_500;
+
+/// Kapanma sayacı Rust'ta tutulur: Mac ekran dışındaki pencerenin zamanlayıcılarını yavaşlattığı
+/// için sayfadaki setTimeout 5 sn yerine 15 sn sürüyordu. Her yeni bildirim/fare hareketi numarayı
+/// artırır; süre dolduğunda numara değişmemişse bildirim kapanır.
+static NUMARA: AtomicU64 = AtomicU64::new(0);
+
+fn kapanmayi_kur(app: &AppHandle, ms: u64) {
+    let numara = NUMARA.fetch_add(1, Ordering::SeqCst) + 1;
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(ms));
+        if NUMARA.load(Ordering::SeqCst) == numara {
+            bildirim_kapat(app);
+        }
+    });
+}
 
 pub fn olustur(app: &AppHandle) -> tauri::Result<()> {
     let pencere = WebviewWindowBuilder::new(app, ETIKET, WebviewUrl::App("bildirim.html".into()))
@@ -74,14 +97,29 @@ pub fn bildirim_ac(app: AppHandle) {
     let _ = pencere.set_always_on_top(false);
     let _ = pencere.set_always_on_top(true);
     let _ = pencere.set_position(PhysicalPosition::new(x, y));
+    kapanmayi_kur(&app, SURE_MS);
 }
 
-/// Bildirim süresi dolunca: pencereyi yine ekran dışına taşır.
+/// Fare bildirimin üstüne gelince: kapanmaz.
 #[tauri::command]
+pub fn bildirim_bekle() {
+    NUMARA.fetch_add(1, Ordering::SeqCst);
+}
+
+/// Fare bildirimden çekilince: kısa süre sonra kapanır.
+#[tauri::command]
+pub fn bildirim_birak(app: AppHandle) {
+    kapanmayi_kur(&app, BIRAKINCA_MS);
+}
+
+/// Bildirim süresi dolunca: pencereyi yine ekran dışına taşır ve sayfaya kapandığını söyler
+/// (bir sonraki bildirim yine kayarak gelsin diye).
 pub fn bildirim_kapat(app: AppHandle) {
+    NUMARA.fetch_add(1, Ordering::SeqCst);
     if let Some(pencere) = app.get_webview_window(ETIKET) {
         let _ = pencere.set_position(PhysicalPosition::new(DISARI, DISARI));
     }
+    let _ = app.emit_to(ETIKET, "kapandi", ());
 }
 
 /// Bildirime tıklanınca: bildirim kapanır, uygulama öne gelir (kullanıcı kendisi istedi).

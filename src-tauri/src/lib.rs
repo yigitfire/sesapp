@@ -326,7 +326,7 @@ pub fn calistir() {
             }
         })
         .invoke_handler(tauri::generate_handler![mikrofon_ac, mikrofon_kapat, mikrofonlar, gurultu_engelle, ses_kaydi, konsol,
-            bildirim::bildirim_goster, bildirim::bildirim_ac, bildirim::bildirim_kapat, bildirim::bildirim_tikla])
+            bildirim::bildirim_goster, bildirim::bildirim_ac, bildirim::bildirim_bekle, bildirim::bildirim_birak, bildirim::bildirim_tikla])
         .run(tauri::generate_context!())
         .expect("uygulama başlatılamadı");
 }

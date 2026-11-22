@@ -456,7 +456,7 @@ import {joinRoom} from './vendor/trystero-0.27.0.js'
 // "96 kbps" ve "kayıpta kurtarma (FEC)" eklenir: biz herkese (eski sürümlere de) bu
 // kalitede göndeririz. Trystero bu ayarı kendisi uyguladığı için tarayıcının ilgili
 // fonksiyonu sarılır; sadece Opus satırına dokunulur. Ses yolu değişmez (ducking yok).
-const OPUS_KBPS = 96
+const OPUS_KBPS = 64
 function opusAyarla(sdp) {
   const pt = /a=rtpmap:(\d+) opus\/48000/i.exec(sdp)?.[1]
   if (!pt) return sdp
@@ -772,8 +772,23 @@ async function katil(isim, oda) {
   micGain = ctx.createGain()
   const micAnaliz = ctx.createAnalyser()
   const cikis = ctx.createMediaStreamDestination()
-  micGain.connect(micAnaliz)
-  micGain.connect(cikis)
+  // Yumuşak sınırlayıcı: normal konuşma (0,6'nın altı) olduğu gibi geçer, daha yükseği yumuşakça
+  // 1'in altında tutulur. Yoksa bağırınca ya da seviye %100'ün üstündeyken ses tavana vurup
+  // kırpılıyor, karşıya cızırtı/robot sesi olarak gidiyordu. Sesi yükseltmez/kısmaz; %200'e
+  // (2 kat) kadar kazancı karşılar: önce yarıya indirilir, eğri 2 katlık aralığa göre çizilir.
+  const yariya = ctx.createGain()
+  yariya.gain.value = .5
+  const sinirla = ctx.createWaveShaper()
+  const egri = new Float32Array(4097)
+  for (let i = 0; i < egri.length; i++) {
+    const x = (i / 2048 - 1) * 2, a = Math.abs(x)
+    egri[i] = Math.sign(x) * (a < .6 ? a : .6 + .4 * Math.tanh((a - .6) / .4))
+  }
+  sinirla.curve = egri
+  sinirla.oversample = '2x'
+  micGain.connect(yariya).connect(sinirla)
+  sinirla.connect(micAnaliz)
+  sinirla.connect(cikis)
   const gidenSes = cikis.stream
   // Herkesin sesi bu ana düğümden hoparlöre gider; seste değilken kısılır (0).
   dinleme = ctx.createGain()
@@ -1081,6 +1096,39 @@ async function katil(isim, oda) {
       sesKaydi('özet; motor', ctx.state, '| ' + (ozet.join(' | ') || 'seste başka kimse yok'))
     }
   }, 3000)
+
+  // Bağlantı kalitesi, dakikada bir ses.log'a: seste olanlardan gelen seste kayıp paket ve
+  // "uydurulan" ses oranı (kayıp paketin yeri tahminle doldurulur; çoksa robot sesi duyulur),
+  // ayrıca benim sesimin karşı taraflara ne kadar kayıpla ulaştığı (onların raporu).
+  setInterval(async () => {
+    if (!sesteyim) return
+    const baglar = room.getPeers(), satirlar = []
+    const yuzde = (a, b) => b > 0 ? (a / b * 100).toFixed(1) : '0'
+    for (const [userId, k] of kisiler) {
+      if (!sesteMi(userId) || userId === benimId) continue
+      const calan = [...akislar.entries()].find(([, a]) => a.stream === k.audio?.srcObject)
+      const iz = calan?.[1].stream.getAudioTracks()[0]
+      const alici = iz && baglar[calan[0]]?.connection?.getReceivers?.().find(r => r.track === iz)
+      if (!alici) continue
+      let g
+      try { for (const r of (await alici.getStats()).values()) if (r.type === 'inbound-rtp') g = r } catch {}
+      if (!g) continue
+      const o = k.sonIstatistik || {}
+      k.sonIstatistik = g
+      const fark = ad => (g[ad] || 0) - (o[ad] || 0)
+      satirlar.push(`${kimAdi(userId)}'den gelen: kayıp %${yuzde(fark('packetsLost'), fark('packetsLost') + fark('packetsReceived'))}`
+        + ` uydurulan %${yuzde(fark('concealedSamples'), fark('totalSamplesReceived'))} jitter ${Math.round((g.jitter || 0) * 1000)} ms`)
+    }
+    for (const b of Object.values(baglar)) {
+      if (!b?.connection || !sesteMi(b.userId)) continue
+      try {
+        for (const r of (await b.connection.getStats()).values())
+          if (r.type === 'remote-inbound-rtp' && r.kind === 'audio')
+            satirlar.push(`benden ${kimAdi(b.userId)}'e: kayıp %${((r.fractionLost || 0) * 100).toFixed(1)} gidiş-dönüş ${Math.round((r.roundTripTime || 0) * 1000)} ms`)
+      } catch {}
+    }
+    if (satirlar.length) sesKaydi('kalite |', satirlar.join(' | '))
+  }, 60e3)
 
   const gonder = () => {
     const t = $('mesaj').value.trim().slice(0, 2000)
