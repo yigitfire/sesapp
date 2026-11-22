@@ -202,6 +202,17 @@
   #gifDurum:empty{display:none}
   #gifPanel .klipy{font-size:11px;text-align:right;color:var(--soluk)}
   .gifBaslik{grid-column:1/-1;font-size:11px;font-weight:600;color:var(--soluk);margin:2px 2px 0}
+  /* Favorilerin ilk kutusu: kendi GIF'ini/çıkartmanı bilgisayardan ekleme. */
+  #gifIzgara button.favoriEkle{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    border:1.5px dashed var(--bg4);background:none;color:var(--soluk);font-size:12px;font-weight:600}
+  #gifIzgara button.favoriEkle b{font-size:26px;line-height:1;font-weight:400}
+  #gifIzgara button.favoriEkle:hover{color:var(--vurgu);border-color:var(--vurgu);outline:none}
+  /* Sağ tık menüsü (favorilere ekle/çıkar). */
+  #sagMenu{display:none;position:fixed;z-index:30;min-width:180px;padding:5px;border-radius:8px;background:var(--bg2);
+    border:1px solid var(--bg4);box-shadow:0 8px 24px #0008}
+  #sagMenu.acik{display:block}
+  #sagMenu button{display:block;width:100%;text-align:left;padding:7px 10px;border-radius:5px;font-size:13px;color:var(--yazi);background:none}
+  #sagMenu button:hover{background:var(--lime);color:#111111}
 
   /* Emoji paneli: kategoriler alt alta, tıklanan emoji yazının imleç olduğu yerine girer. */
   #emojiPanel{display:none;position:absolute;right:16px;bottom:72px;z-index:3;width:min(360px,calc(100% - 32px));height:340px;
@@ -237,6 +248,7 @@
   .msj img.ozelEmoji{width:1.4em;height:1.4em;vertical-align:-.3em;margin:0 1px}
   .msj .sadeceEmoji img.ozelEmoji{width:3em;height:3em}
   #sohbetUyari{margin:0 16px 6px;font-size:12px;color:var(--kirmizi)}
+  #sohbetUyari.iyi{color:var(--vurgu)}
   /* Yukarıdayken yeni mesaj gelince yazı kutusunun üstünde çıkan küçük düğme. */
   #yeniMesaj{display:none;position:absolute;left:50%;bottom:70px;transform:translateX(-50%);z-index:2;align-items:center;gap:4px;
     padding:4px 11px 4px 7px;border-radius:999px;background:var(--lime);color:#111111;font-size:12px;font-weight:700;
@@ -411,6 +423,7 @@
     <div id="gifPanel">
       <input id="gifAra" placeholder="Search KLIPY" maxlength="50">
       <div id="gifIzgara"><div id="gifDurum"></div></div>
+      <input type="file" id="favoriDosya" accept="image/gif,image/png,image/webp,image/jpeg" multiple hidden>
       <div class="klipy">Powered by KLIPY</div>
     </div>
   </div>
@@ -419,6 +432,7 @@
 </div>
 
 <div id="buyukFoto"><img alt=""><div></div></div>
+<div id="sagMenu"></div>
 <div id="ayarlar">
   <div class="kart">
     <div class="ust"><h2>Ayarlar</h2><button class="ib k" id="ayarKapat" title="Kapat"><svg class="i"><use href="#i-x"/></svg></button></div>
@@ -938,11 +952,12 @@ async function katil(isim, oda) {
     }
     resimIstegi.send({id}, hedef ? {target: hedef} : undefined).catch(() => {})
   }
-  resimGonder = async dosya => {
-    const {veri, tip, w, h} = await resimHazirla(dosya)
+  resimGonder = async dosya => resimVeriGonder(await resimHazirla(dosya))
+  // Hazır fotoğraf verisini gönderir (favorilerdeki GIF/çıkartmalar da bununla gider).
+  resimVeriGonder = async ({veri, tip, w, h}) => {
     const id = crypto.randomUUID()
     const r = {tip, w, h, b: veri.byteLength, ozet: await ozetAl(veri)}
-    const mesaj = {id, u: benimId, t: '📷 Fotoğraf', z: Date.now(), r}
+    const mesaj = {id, u: benimId, t: tip === 'image/gif' ? 'GIF' : '📷 Fotoğraf', z: Date.now(), r}
     await resimSakla(id, veri, tip)
     mesajEkle([mesaj])
     // Önce mesaj, sonra fotoğraf: karşı taraf fotoğrafı neyle karşılaştıracağını bilsin.
@@ -2018,6 +2033,7 @@ const RESIM_MAX = 1900 * 1024   // Trystero tek mesajda en çok 2 MB taşır
 const RESIM_KENAR = 1600        // gönderilmeden önce en uzun kenar bu kadara küçültülür
 const RESIM_SAKLA = 200         // bu bilgisayarda saklanan en çok fotoğraf (eskiler silinir)
 let resimGonder = async () => {}   // odaya girince tanımlanır
+let resimVeriGonder = async () => {}
 let resimIste = () => {}
 const resimler = new Map()         // mesaj id -> <img> (her çizimde baştan yüklenmesin)
 const eksikResimler = new Set()    // elimizde olmayan fotoğraflar (odadakilerden istenir)
@@ -2036,8 +2052,12 @@ async function ozetAl(veri) {
 let depoSozu
 function depo() {
   return depoSozu ??= new Promise((ok, hata) => {
-    const r = indexedDB.open('monke', 1)
-    r.onupgradeneeded = () => r.result.createObjectStore('resimler', {keyPath: 'id'}).createIndex('z', 'z')
+    // 2. sürüm: favoriler eklendi (eski fotoğraflar yerinde kalır).
+    const r = indexedDB.open('monke', 2)
+    r.onupgradeneeded = e => {
+      if (e.oldVersion < 1) r.result.createObjectStore('resimler', {keyPath: 'id'}).createIndex('z', 'z')
+      if (e.oldVersion < 2) r.result.createObjectStore('favoriler', {keyPath: 'id'})
+    }
     r.onsuccess = () => ok(r.result)
     r.onerror = () => hata(r.error)
   })
@@ -2144,8 +2164,9 @@ async function resimHazirla(dosya) {
 
 // Fotoğraf seçme, yapıştırma (Cmd/Ctrl+V) ve sürükleyip bırakma. Tek seferde en çok 5 tane.
 let uyariZamanlayici
-function sohbetUyari(metin) {
+function sohbetUyari(metin, iyi) {
   $('sohbetUyari').textContent = metin
+  $('sohbetUyari').classList.toggle('iyi', !!iyi)
   clearTimeout(uyariZamanlayici)
   uyariZamanlayici = setTimeout(() => $('sohbetUyari').textContent = '', 6000)
 }
@@ -2200,6 +2221,7 @@ function gifResmi(m) {
     const olcek = Math.min(1, 260 / m.g.w, 220 / m.g.h)
     img = new Image(Math.round(m.g.w * olcek), Math.round(m.g.h * olcek))
     img.className = 'gif'
+    img.dataset.id = m.id
     img.alt = m.g.t || 'GIF'
     img.onload = () => img.classList.add('yuklendi')
     // Bizim GIF'imiz bu sürümde yoksa web sitesinden yüklenir.
@@ -2238,7 +2260,7 @@ $('gifAc').onclick = e => {
   $('gifPanel').classList.contains('acik') ? gifPaneliKapat() : gifPaneliAc()
 }
 document.addEventListener('pointerdown', e => {
-  if (!$('gifPanel').contains(e.target) && !$('gifAc').contains(e.target)) gifPaneliKapat()
+  if (!$('gifPanel').contains(e.target) && !$('gifAc').contains(e.target) && !$('sagMenu').contains(e.target)) gifPaneliKapat()
   if (!$('emojiPanel').contains(e.target) && !$('emojiAc').contains(e.target)) emojiPaneliKapat()
 })
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { gifPaneliKapat(); emojiPaneliKapat() } })
@@ -2307,7 +2329,7 @@ function gifListele(sorgu) {
   gifSayfa = 0
   gifDahaVar = true
   $('gifIzgara').replaceChildren($('gifDurum'))
-  if (!sorgu) monkeGifleriEkle()
+  if (!sorgu) { favorileriEkle(); monkeGifleriEkle() }
   if (!sorgu && populer && Date.now() - populer.z < 10 * 60e3) {
     gifSayfa = 1
     gifDahaVar = populer.dahaVar
@@ -2356,11 +2378,13 @@ function gifBilgisi(o) {
 
 // Panelin en üstünde bizim GIF'lerimiz, altında "Klipy" başlığıyla Klipy'nin popülerleri.
 // Arama yapınca sadece Klipy sonuçları görünür.
+const gifBaslik = ad => Object.assign(document.createElement('div'), {className: 'gifBaslik', textContent: ad})
 function monkeGifleriEkle() {
-  const baslik = ad => Object.assign(document.createElement('div'), {className: 'gifBaslik', textContent: ad})
+  const baslik = gifBaslik
   $('gifIzgara').insertBefore(baslik('Monke'), $('gifDurum'))
   for (const {kod, ...g} of MONKE_GIFLER) {
     const b = document.createElement('button')
+    b._gif = g
     b.title = g.t
     const img = new Image()
     img.alt = g.t
@@ -2376,6 +2400,7 @@ function gifEkle(liste) {
   const sorgu = gifSorgu
   for (const {g, onizleme} of liste) {
     const b = document.createElement('button')
+    b._gif = g
     b.title = g.t
     const img = new Image()
     img.loading = 'lazy'
@@ -2394,6 +2419,148 @@ function gifEkle(liste) {
     $('gifIzgara').insertBefore(b, $('gifDurum'))
   }
 }
+
+// ---- Favoriler ----
+// Herkesin kendi listesi, sadece kendi bilgisayarında durur. İki çeşit kayıt var:
+//  - Klipy/Monke GIF'i: sadece adresi saklanır, GIF olarak gönderilir.
+//  - Dosya: kendi eklediğin GIF/çıkartma ya da sohbette birinin attığı fotoğraf/GIF. Verinin
+//    kendisi saklanır (kaynağı silinse de durur), gönderince fotoğraf gibi gider.
+// Aynı şey iki kez eklenmesin diye anahtar adresten veya içeriğin özetinden (SHA-256) çıkar.
+const FAVORI_MAX = 200
+const favoriAnahtari = k => k.g ? 'u:' + k.g.u : 'o:' + k.ozet
+async function favoriDeposu(mod, is) {
+  const d = await depo()
+  return new Promise((ok, hata) => {
+    const tx = d.transaction('favoriler', mod), istek = is(tx.objectStore('favoriler'))
+    tx.oncomplete = () => ok(istek?.result)
+    tx.onerror = () => hata(tx.error)
+  })
+}
+const favoriler = () => favoriDeposu('readonly', st => st.getAll()).then(l => (l || []).sort((a, b) => b.z - a.z)).catch(() => [])
+const favoriGetir = id => favoriDeposu('readonly', st => st.get(id)).catch(() => null)
+async function favoriEkle(kayit) {
+  if ((await favoriler()).length >= FAVORI_MAX) throw new Error('En çok ' + FAVORI_MAX + ' favori olabilir')
+  await favoriDeposu('readwrite', st => st.put({...kayit, id: favoriAnahtari(kayit), z: Date.now()}))
+  favorilerDegisti()
+}
+async function favoriSil(id) {
+  await favoriDeposu('readwrite', st => st.delete(id))
+  if (favoriAdresleri.has(id)) { URL.revokeObjectURL(favoriAdresleri.get(id)); favoriAdresleri.delete(id) }
+  favorilerDegisti()
+}
+// Panel açıksa ve arama yoksa liste yenilensin.
+function favorilerDegisti() {
+  if ($('gifPanel').classList.contains('acik') && !gifSorgu) {
+    const kaydirma = $('gifIzgara').scrollTop
+    gifListele('')
+    $('gifIzgara').scrollTop = kaydirma
+  }
+}
+const favoriAdresleri = new Map()   // favori id -> blob adresi (her çizimde yeniden yaratılmasın)
+const favoriAdresi = f => {
+  if (f.g) return f.g.u
+  if (!favoriAdresleri.has(f.id)) favoriAdresleri.set(f.id, URL.createObjectURL(new Blob([f.veri], {type: f.tip})))
+  return favoriAdresleri.get(f.id)
+}
+
+// GIF panelinin en üstü: "Favoriler" başlığı, "+ GIF ekle" kutusu ve favoriler (en yeni önde).
+let favoriCizimNo = 0
+function favorileriEkle() {
+  const no = ++favoriCizimNo, iz = $('gifIzgara')
+  iz.insertBefore(gifBaslik('Favoriler'), $('gifDurum'))
+  const ekle = document.createElement('button')
+  ekle.className = 'favoriEkle'
+  ekle.title = 'Bilgisayarından GIF ya da çıkartma ekle (GIF, PNG, WebP; en çok 1,9 MB)'
+  ekle.innerHTML = '<b>+</b>GIF ekle'
+  ekle.onclick = () => $('favoriDosya').click()
+  iz.insertBefore(ekle, $('gifDurum'))
+  favoriler().then(liste => {
+    if (no !== favoriCizimNo || !ekle.isConnected) return
+    let son = ekle
+    for (const f of liste) {
+      const b = document.createElement('button')
+      b._favori = f
+      b.title = f.g ? f.g.t : 'Favori (sağ tıkla: çıkar)'
+      const img = new Image()
+      img.alt = b.title
+      img.src = favoriAdresi(f)
+      if (f.g?.u.startsWith('gif/')) img.onerror = () => { if (!img.src.startsWith(SITE)) img.src = SITE + f.g.u }
+      b.append(img)
+      b.onclick = () => {
+        gifPaneliKapat()
+        if (f.g) gifGonder(f.g)
+        // Kopyası gider: gönderim veriyi devralabilir, favorideki asıl veri bozulmasın.
+        else resimVeriGonder({...f, veri: f.veri.slice(0)}).catch(e => sohbetUyari(e.message || 'Gönderilemedi'))
+      }
+      son.after(b)
+      son = b
+    }
+  })
+}
+// Kendi GIF'ini/çıkartmanı ekleme: fotoğraf gibi hazırlanır (GIF olduğu gibi, diğerleri küçültülür).
+$('favoriDosya').onchange = async () => {
+  const dosyalar = [...$('favoriDosya').files]
+  $('favoriDosya').value = ''
+  let eklenen = 0
+  for (const d of dosyalar.slice(0, 10)) {
+    try {
+      const {veri, tip, w, h} = await resimHazirla(d)
+      await favoriEkle({veri, tip, w, h, ozet: await ozetAl(veri)})
+      eklenen++
+    } catch (e) { sohbetUyari(d.name + ': ' + (e.message || 'eklenemedi')) }
+  }
+  if (eklenen) sohbetUyari(eklenen + ' GIF favorilere eklendi', true)
+}
+
+// Sağ tık menüsü: sohbetteki GIF/fotoğrafta ve GIF panelindeki GIF'lerde "Favorilere ekle/çıkar".
+function sagMenuAc(x, y, secenekler) {
+  const m = $('sagMenu')
+  m.replaceChildren(...secenekler.map(([ad, is]) => {
+    const b = document.createElement('button')
+    b.textContent = ad
+    b.onclick = () => { sagMenuKapat(); is() }
+    return b
+  }))
+  m.classList.add('acik')
+  const r = m.getBoundingClientRect()
+  m.style.left = Math.max(4, Math.min(x, innerWidth - r.width - 8)) + 'px'
+  m.style.top = Math.max(4, Math.min(y, innerHeight - r.height - 8)) + 'px'
+}
+const sagMenuKapat = () => $('sagMenu').classList.remove('acik')
+document.addEventListener('pointerdown', e => { if (!$('sagMenu').contains(e.target)) sagMenuKapat() })
+document.addEventListener('keydown', e => { if (e.key === 'Escape') sagMenuKapat() })
+window.addEventListener('blur', sagMenuKapat)
+$('mesajlar').addEventListener('scroll', sagMenuKapat)
+$('gifIzgara').addEventListener('scroll', sagMenuKapat)
+
+// Sağ tıklanan şeyden favori kaydını çıkarır. Fotoğraf/GIF dosyası favoriye eklenirken veri
+// bu bilgisayarda kayıtlı fotoğraftan alınır.
+function favoriHedefi(el) {
+  const b = el.closest?.('#gifIzgara button')
+  if (b?._favori) return {id: b._favori.id}
+  if (b?._gif) return {id: 'u:' + b._gif.u, kayit: async () => ({g: b._gif})}
+  const img = el.closest?.('#mesajlar img.gif, #mesajlar img.resim')
+  const m = img && gecmis.find(x => x.id === img.dataset.id)
+  if (m?.g) return {id: 'u:' + m.g.u, kayit: async () => ({g: m.g})}
+  if (m?.r) return {id: 'o:' + m.r.ozet, kayit: async () => {
+    const k = await resimKaydi(m.id)
+    if (!k) throw new Error('Fotoğraf henüz yüklenmedi')
+    return {veri: k.veri, tip: m.r.tip, w: m.r.w, h: m.r.h, ozet: m.r.ozet}
+  }}
+  return null
+}
+document.addEventListener('contextmenu', async e => {
+  const hedef = favoriHedefi(e.target)
+  if (!hedef) return
+  e.preventDefault()
+  const var_ = !!(await favoriGetir(hedef.id))
+  sagMenuAc(e.clientX, e.clientY, [var_
+    ? ['Favorilerden çıkar', () => favoriSil(hedef.id).then(() => sohbetUyari('Favorilerden çıkarıldı', true)).catch(() => {})]
+    : ['Favorilere ekle', async () => {
+        try { await favoriEkle(await hedef.kayit()); sohbetUyari('Favorilere eklendi', true) }
+        catch (err) { sohbetUyari(err.message || 'Favorilere eklenemedi') }
+      }]])
+})
 </script>
 </body>
 </html>
