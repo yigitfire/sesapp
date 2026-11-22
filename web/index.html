@@ -83,16 +83,24 @@
   /* Sol taraf ses kanalıdır: sadece seste olanlar görünür. Sadece sohbette olanlar
      (ve çevrimdışılar) sağdaki üye listesinde. */
   .kisi.yazida{display:none}
-  #sesBos{padding:8px;font-size:13px;color:var(--soluk)}
+  /* Ses odası satırı (Discord'daki ses kanalı gibi): tıklayınca sese girilir. Altında,
+     içeride olanlar girintili listelenir; sese girmeden de uzaktan görünür. */
+  #odaSatiri{display:flex;align-items:center;gap:8px;width:100%;padding:7px 8px;border-radius:8px;
+             font-size:14px;font-weight:600;color:var(--soluk);text-align:left}
+  #odaSatiri:hover{background:var(--bg3);color:var(--yazi)}
+  #odaSatiri .i{width:18px;height:18px}
+  #odaSatiri .katil{margin-left:auto;font-size:12px;font-weight:600;color:var(--vurgu);opacity:0}
+  #odaSatiri:hover .katil{opacity:1}
+  /* Sestesin: oda vurgulu, tıklanmaz. */
+  #app:not(.sessiz) #odaSatiri{color:var(--vurgu);cursor:default;background:none}
+  #app:not(.sessiz) #odaSatiri .katil{display:none}
+  #kisiler .kisi,#benOdada{margin-left:22px;padding:4px 8px}
+  #kisiler .av,#benOdada .av{width:26px;height:26px;font-size:12px}
+  #benOdada{display:none}
+  #app:not(.sessiz) #benOdada{display:block}
 
-  /* Seste değilken: mikrofon/çık/seviye gizlenir, "Sese katıl" görünür. */
-  #sesAlani{display:none;padding:8px}
-  .sessiz #sesAlani{display:block}
+  /* Seste değilken: mikrofon/çık/seviye gizlenir. */
   .sessiz #mute,.sessiz #cik,.sessiz #ben .bar,.sessiz #ben .ses{display:none}
-  #seseKatil{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;border-radius:8px;
-             background:var(--lime);color:#111111;font-weight:600}
-  #seseKatil:hover{filter:brightness(1.1)}
-  #seseKatil:disabled{opacity:.5;cursor:default}
   #mikHata{padding:0 12px 8px;font-size:12px;text-align:center;color:var(--kirmizi)}
   .ib.bekliyor{opacity:.5}
   #mikHata:empty{display:none}
@@ -217,7 +225,6 @@
   <symbol id="i-cik" viewBox="0 0 24 24"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></symbol>
   <symbol id="i-ayar" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
-  <symbol id="i-kulaklik" viewBox="0 0 24 24"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></symbol>
   <symbol id="i-kapat" viewBox="0 0 24 24"><path d="M10.1 13.9a14 14 0 0 0 3.7 2.7 1 1 0 0 0 1.2-.3l.4-.5A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.5.4a1 1 0 0 0-.3 1.2 14 14 0 0 0 .2.5"/><path d="M22 2 2 22"/></symbol>
 </svg>
 
@@ -235,9 +242,9 @@
 
 <div id="app">
   <div id="sol">
-    <div id="kisiler"><div id="sesBos">Seste kimse yok</div></div>
-    <div id="sesAlani">
-      <button id="seseKatil"><svg class="i"><use href="#i-kulaklik"/></svg>Sese katıl</button>
+    <div id="kisiler">
+      <button id="odaSatiri" title="Sese katıl"><svg class="i"><use href="#i-hop"/></svg>Ses odası<span class="katil">Katıl</span></button>
+      <div id="benOdada"><div class="ust"><span class="av"></span><span class="ad"></span></div></div>
     </div>
     <div id="mikHata"></div>
     <div id="ben">
@@ -481,10 +488,11 @@ async function katil(isim, oda) {
     mikDugmesi()
   }
   // Seviye kazançtan sonra ölçülür; mikrofon kapalıyken 0 olur, halka yanmaz.
-  const benHalka = konusmaIzle($('ben'))
+  const benHalka = konusmaIzle($('ben')), odadaHalka = konusmaIzle($('benOdada'))
   seviyeIzle(micAnaliz, v => {
     $('micBar').style.width = Math.min(100, v * 300) + '%'
     benHalka(v)
+    odadaHalka(v)
   })
 
   room = joinRoom({appId: 'yigit-ses-app-2026', password: oda, maxUsers: 6}, oda)
@@ -675,7 +683,7 @@ async function katil(isim, oda) {
   benimKartimiCiz()
 
   $('cik').onclick = sesiKapat
-  $('seseKatil').onclick = sesiAc
+  $('odaSatiri').onclick = sesiAc
 
   $('giris').style.display = 'none'
   $('app').style.display = 'flex'
@@ -754,7 +762,11 @@ function sesiKapat() {
 function sesArayuzu() {
   $('app').classList.toggle('sessiz', !sesteyim)
   uyeleriCiz()
-  if (!sesteyim) { $('ben').classList.remove('konusuyor'); $('micBar').style.width = 0 }
+  if (!sesteyim) {
+    $('ben').classList.remove('konusuyor')
+    $('benOdada').classList.remove('konusuyor')
+    $('micBar').style.width = 0
+  }
 }
 
 // Odadan tamamen çık (oda/isim değiştirmek için giriş ekranına döner). Ayarlar'daki buton.
@@ -780,6 +792,8 @@ function benimKartimiCiz() {
   const renk = renkAl(benimId)
   avatarCiz($('benAv'), benimId)
   avatarCiz($('fotoOnizleme'), benimId)
+  avatarCiz($('benOdada').querySelector('.av'), benimId)
+  $('benOdada').querySelector('.ad').textContent = isimAl(benimId)
   $('fotoKaldir').style.display = profiller[benimId]?.foto ? '' : 'none'
   for (const b of $('renkler').children) b.classList.toggle('secili', b.dataset.renk === renk)
 }
@@ -978,8 +992,6 @@ function uyeleriCiz() {
   if (uyeCizimi) return
   uyeCizimi = setTimeout(() => {
     uyeCizimi = 0
-    // Sen sestesen zaten oradasın; değilsen ve seste kimse yoksa bunu yaz.
-    $('sesBos').hidden = sesteyim || [...kisiler.keys()].some(sesteMi)
     // Üyeler: son görülmesi bilinen herkes + şu an bağlı olanlar + bu odada mesaj yazmış olanlar.
     const hepsi = new Set([...Object.keys(uyeler), ...kisiler.keys(), ...gecmis.map(m => m.u), benimId])
     hepsi.delete('')
