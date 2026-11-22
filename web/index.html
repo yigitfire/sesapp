@@ -55,9 +55,7 @@
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
   .sesIzgara button:hover{background:color-mix(in srgb,var(--vurgu) 22%,var(--bg4))}
   .sesIzgara button.ekle{text-align:center;color:var(--soluk);border:1px dashed var(--soluk);background:none}
-  .sesIzgara button .sil{position:absolute;top:0;right:0;width:22px;height:100%;display:none;place-items:center;
-    background:var(--bg4);color:var(--kirmizi);font-size:15px}
-  .sesIzgara button:hover .sil{display:grid}
+  .sesIzgara input.sesAdi{height:34px;padding:0 8px;font-size:13px;border-radius:7px;border-color:var(--vurgu)}
   #sesPanelMenu .seviye{margin-top:4px}
   #efektBaslik{margin-top:12px}
   #sesPanelMenu .ipucu,#girisSesiKutu .ipucu{font-size:11px;color:var(--soluk);margin-top:6px}
@@ -460,7 +458,7 @@
         <h4>Ses paneli</h4>
         <div id="sesPanelListe"></div>
         <div id="sesPanelHata"></div>
-        <div class="ipucu">Bastığın ses sesteki herkese çalar. En fazla 5 saniye; uzunsa ilk 5 saniyesi alınır.</div>
+        <div class="ipucu">Bastığın ses sesteki herkese çalar. Sağ tıkla: yeniden adlandır / sil. En fazla 5 saniye; uzunsa ilk 5 saniyesi alınır.</div>
         <div class="ipucu" id="efektBaslik">Bu seslerin sana gelen seviyesi</div>
         <div class="seviye" title="Panel seslerinin ve giriş seslerinin sana ne kadar yüksek çalacağı"><input type="range" id="efektSeviye" min="0" max="100" value="70"><span class="yuzde" id="efektYuzde">70</span></div>
         <input type="file" id="panelDosya" accept="audio/*" hidden>
@@ -553,7 +551,7 @@
       <label class="anahtar" title="Pencerenin arkası buzlu cam gibi bulanık görünür.">Saydam mod<input type="checkbox" id="saydamAcik"></label>
       <div id="saydamSeviye" hidden><span>Saydamlık</span><input type="range" id="saydamYuzde" min="5" max="90" value="30"><span class="yuzde" id="saydamYazi">30%</span></div>
     </div>
-    <h3>Sese giriş sesim</h3>
+    <h3>Giriş sesi (join sound)</h3>
     <div id="girisSesiKutu">
       <div class="satir"><span id="girisSesiAd">Yok (varsayılan ses)</span><button id="girisSesiDinle" hidden>Dinle</button><button id="girisSesiKaldir" hidden>Kaldır</button><button id="girisSesiSec">Yükle</button></div>
       <div id="girisSesiHata"></div>
@@ -1629,7 +1627,7 @@ async function girisCihaziSec(id) {
 $('kulakMenuAc').onclick = () => menuAc($('kulakMenu'), $('kulakMenuAc'))
 $('sesPanelAc').onclick = () => { menuAc($('sesPanelMenu'), $('sesPanelAc')); sesPaneliniCiz() }
 document.addEventListener('pointerdown', e => {
-  if (!e.target.closest('#ben .menu, #mikMenuAc, #kulakMenuAc, #sesPanelAc')) menuleriKapat()
+  if (!e.target.closest('#ben .menu, #mikMenuAc, #kulakMenuAc, #sesPanelAc, #sagMenu')) menuleriKapat()
 })
 document.addEventListener('keydown', e => { if (e.key === 'Escape') menuleriKapat() })
 
@@ -2423,22 +2421,23 @@ function sesPaneliniCiz() {
       const b = document.createElement('button')
       b.textContent = x.a
       b.title = x.a
-      b.onclick = e => {
-        if (e.target.closest('.sil')) return
+      b.onclick = () => {
         panelSesiCal(x.o, benimId)
         sesBas(x.o)
       }
-      if (benim) {
-        const sil = document.createElement('span')
-        sil.className = 'sil'
-        sil.textContent = '×'
-        sil.title = 'Sil'
-        sil.onclick = () => {
-          benimSesler.panel = benimSesler.panel.filter(y => y.o !== x.o)
-          seslerimiYay()
-          sesPaneliniCiz()
-        }
-        b.append(sil)
+      // Sağ tık: kendi sesimse yeniden adlandır / sil.
+      b.oncontextmenu = e => {
+        e.preventDefault()
+        e.stopPropagation()
+        if (!benim) return
+        sagMenuAc(e.clientX, e.clientY, [
+          ['Yeniden adlandır', () => sesAdlandir(b, x)],
+          ['Sil', () => {
+            benimSesler.panel = benimSesler.panel.filter(y => y.o !== x.o)
+            seslerimiYay()
+            sesPaneliniCiz()
+          }],
+        ])
       }
       izgara.append(b)
     }
@@ -2453,6 +2452,34 @@ function sesPaneliniCiz() {
   }
   bolum('Seslerin', benimSesler.panel, true)
   for (const [id, l] of kisiSesleri) if (l.panel.length && kisiler.has(id)) bolum(isimAl(id) + ' sesleri', l.panel, false)
+}
+// Sesin adı düğmenin yerinde yazılarak değişir (Enter/başka yere tıklama: kaydet, Esc: vazgeç).
+function sesAdlandir(b, x) {
+  const g = document.createElement('input')
+  g.className = 'sesAdi'
+  g.value = x.a
+  g.maxLength = 24
+  let bitti = false
+  const bitir = kaydetsin => {
+    if (bitti) return
+    bitti = true
+    const ad = g.value.trim().slice(0, 24)
+    if (kaydetsin && ad && ad !== x.a) {
+      const k = benimSesler.panel.find(y => y.o === x.o)
+      if (k) k.a = ad
+      seslerimiYay()
+    }
+    sesPaneliniCiz()
+  }
+  g.onkeydown = e => {
+    e.stopPropagation()
+    if (e.key === 'Enter') bitir(true)
+    else if (e.key === 'Escape') bitir(false)
+  }
+  g.onblur = () => bitir(true)
+  b.replaceWith(g)
+  g.focus()
+  g.select()
 }
 $('panelDosya').onchange = async () => {
   const d = $('panelDosya').files[0]
