@@ -39,8 +39,10 @@
      --opak JS'ten gelir (ne kadar dolu). Menüler, paneller ve yazı kutusu dolu kalır, okunsun. */
   :root.saydam{--opak:70%}
   :root.saydam body{background:color-mix(in srgb,var(--bg) var(--opak),transparent)}
-  :root.saydam #sol,:root.saydam #uyeler{background:color-mix(in srgb,var(--bg2) var(--opak),transparent)}
-  :root.saydam #ben{background:color-mix(in srgb,var(--alt) var(--opak),transparent)}
+  /* Kenar sütunları gövdenin üstünde durduğu için sadece hafif bir koyuluk eklenir (yoksa iki kat
+     koyu olup saydamlığı yiyordu). */
+  :root.saydam #sol,:root.saydam #uyeler{background:color-mix(in srgb,var(--bg2) calc(var(--opak) * .35),transparent)}
+  :root.saydam #ben{background:color-mix(in srgb,var(--alt) calc(var(--opak) * .35),transparent)}
   #saydamSeviye{display:flex;align-items:center;gap:8px;margin:2px 0 6px}
   #saydamSeviye[hidden]{display:none}
   #saydamSeviye .yuzde{width:36px}
@@ -66,6 +68,27 @@
   #girisSesiKutu .satir button{padding:5px 9px;border-radius:7px;background:var(--bg3);font-size:12px}
   #girisSesiKutu .satir button:hover{background:var(--bg4)}
   #girisSesiKutu .satir button[hidden]{display:none}
+  /* Üst çubuk (masaüstü): sistemin başlık çubuğu yerine. Mac'te renkli pencere düğmeleri
+     solda kalır, Windows'ta sağda kendi küçült/büyüt/kapat düğmelerimiz var. Çubuk tutulup
+     sürüklenince pencere taşınır, çift tıklayınca büyür. */
+  #ustCubuk{display:none}
+  :root.pencereli{--ust:32px}
+  :root.pencereli.mac{--ust:28px}
+  :root.pencereli body{padding-top:var(--ust)}
+  :root.pencereli #ustCubuk{display:flex;align-items:center;position:fixed;top:0;left:0;right:0;height:var(--ust);z-index:8;
+    background:var(--alt);-webkit-user-select:none;user-select:none}
+  :root.saydam #ustCubuk{background:transparent}
+  #ustCubuk .ad{flex:1;display:flex;align-items:center;gap:7px;padding-left:12px;font-size:12px;font-weight:600;color:var(--soluk);pointer-events:none}
+  #ustCubuk .ad img{width:16px;height:16px}
+  :root.mac #ustCubuk .ad{justify-content:center;padding-left:0}
+  :root.mac #ustCubuk .ad img{display:none}
+  #pencereDugmeleri{display:flex;height:100%}
+  :root.mac #pencereDugmeleri{display:none}
+  #pencereDugmeleri button{width:46px;height:100%;display:grid;place-items:center;color:var(--soluk)}
+  #pencereDugmeleri button:hover{background:var(--bg4);color:var(--yazi)}
+  #pencereDugmeleri #pKapat:hover{background:#e81123;color:#fff}
+  #pencereDugmeleri svg{width:10px;height:10px;stroke:currentColor;stroke-width:1.1;fill:none}
+  :root.pencereli #guncelleme{top:var(--ust)}
   *{box-sizing:border-box}
   body{margin:0;height:100vh;display:flex;background:var(--bg);color:var(--yazi);
        font:15px/1.4 'Noto Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
@@ -104,6 +127,11 @@
   /* Sol: kişiler + alttaki kendi panelim */
   #sol{width:240px;flex:none;display:flex;flex-direction:column;background:var(--bg2)}
   #kisiler{flex:1;overflow:auto;padding:8px;display:flex;flex-direction:column;gap:2px}
+  /* Sol sütunun başı: sunucu adı (Discord'daki gibi), altında küçük kategori başlığı. */
+  #sunucuBaslik{flex:none;height:48px;display:flex;align-items:center;gap:9px;padding:0 14px;font-size:15px;font-weight:700;
+    color:var(--bas);border-bottom:1px solid var(--bg4);box-shadow:0 1px 3px #0003}
+  #sunucuBaslik img{width:22px;height:22px}
+  #kisiler .kategori{padding:10px 4px 4px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--soluk)}
   .kisi{padding:6px 8px;border-radius:8px}
   .kisi:hover{background:var(--bg3)}
   .ust{display:flex;align-items:center;gap:10px}
@@ -391,6 +419,8 @@
 <script>
   // Tema, sayfa çizilmeden önce uygulanır; yoksa açık temada bir an koyu ekran yanıp söner.
   try { const t = localStorage.getItem('tema'); if (t && t !== 'koyu') document.documentElement.dataset.tema = t } catch {}
+  // Masaüstünde kendi üst çubuğumuz görünür (sayfa çizilmeden, yoksa içerik bir an zıplar).
+  if (window.__TAURI__) document.documentElement.classList.add('pencereli', /Mac/.test(navigator.platform) ? 'mac' : 'win')
 </script>
 </head>
 <body>
@@ -417,6 +447,14 @@
   <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
 </svg>
 
+<div id="ustCubuk" data-tauri-drag-region>
+  <div class="ad"><img src="logo.svg" alt="">Monke</div>
+  <div id="pencereDugmeleri">
+    <button id="pKucult" title="Küçült"><svg viewBox="0 0 10 10"><path d="M0 5.5h10"/></svg></button>
+    <button id="pBuyut" title="Büyüt"><svg viewBox="0 0 10 10"><rect x=".5" y=".5" width="9" height="9"/></svg></button>
+    <button id="pKapat" title="Kapat"><svg viewBox="0 0 10 10"><path d="M0 0l10 10M10 0 0 10"/></svg></button>
+  </div>
+</div>
 <div id="guncelleme"></div>
 
 <div id="giris">
@@ -431,7 +469,9 @@
 
 <div id="app">
   <div id="sol">
+    <div id="sunucuBaslik"><img src="logo.svg" alt="">Monke</div>
     <div id="kisiler">
+      <div class="kategori">Ses kanalı</div>
       <button id="odaSatiri" title="Sese katıl"><svg class="i"><use href="#i-hop"/></svg>Ses odası<span class="katil">Katıl</span></button>
       <div id="benOdada"><div class="ust"><span class="av"></span><span class="ad"></span></div></div>
     </div>
@@ -549,7 +589,7 @@
     <div id="temaSec"><button data-tema="koyu" title="Koyu">Koyu</button><button data-tema="acik" title="Açık">Açık</button><button data-tema="lacivert" title="Lacivert">Lacivert</button><button data-tema="gri" title="Gri">Gri</button><button data-tema="kahve" title="Kahverengi">Kahverengi</button><button data-tema="mor" title="Mor">Mor</button><button data-tema="orman" title="Orman yeşili">Orman yeşili</button><button data-tema="bordo" title="Bordo">Bordo</button><button data-tema="petrol" title="Petrol">Petrol</button><button data-tema="siyah" title="Gece siyahı">Gece siyahı</button></div>
     <div id="saydamKutu" hidden>
       <label class="anahtar" title="Pencerenin arkası buzlu cam gibi bulanık görünür.">Saydam mod<input type="checkbox" id="saydamAcik"></label>
-      <div id="saydamSeviye" hidden><span>Saydamlık</span><input type="range" id="saydamYuzde" min="5" max="90" value="30"><span class="yuzde" id="saydamYazi">30%</span></div>
+      <div id="saydamSeviye" hidden><span>Saydamlık</span><input type="range" id="saydamYuzde" min="5" max="100" value="40"><span class="yuzde" id="saydamYazi">30%</span></div>
     </div>
     <h3>Giriş sesi (join sound)</h3>
     <div id="girisSesiKutu">
@@ -674,9 +714,9 @@ const durum = (metin, hata = true) => { $('hata').textContent = metin; $('hata')
 
 // ---- Ayarlar: tema + bildirim sesleri (bu cihazda saklanır) ----
 const bildirim = {giris: true, cikis: true, mesaj: true, ...oku('bildirim', {})}
-// Saydam mod (sadece masaüstü): {acik, yuzde}. yuzde = ne kadar saydam (5-90).
-const saydamAyar = {acik: false, yuzde: 30, ...oku('saydam', {})}
-saydamAyar.yuzde = Math.min(90, Math.max(5, Number(saydamAyar.yuzde) || 30))
+// Saydam mod (sadece masaüstü): {acik, yuzde}. yuzde = ne kadar saydam (5-100).
+const saydamAyar = {acik: false, yuzde: 40, ...oku('saydam', {})}
+saydamAyar.yuzde = Math.min(100, Math.max(5, Number(saydamAyar.yuzde) || 40))
 let saydamEfekti = null
 function saydamUygula() {
   const acik = masaustu && saydamAyar.acik
@@ -759,6 +799,13 @@ function kenarCekme(tutamak, sutun, diger, anahtar, enAz, enCok, yon) {
 }
 kenarCekme($('solTutamak'), $('sol'), $('uyeler'), 'solGenislik', 180, 400, 1)
 kenarCekme($('sagTutamak'), $('uyeler'), $('sol'), 'sagGenislik', 160, 360, -1)
+// Üst çubuktaki Windows düğmeleri (Mac'te sistemin kendi düğmeleri var).
+if (masaustu) {
+  const pencere = window.__TAURI__.window.getCurrentWindow()
+  $('pKucult').onclick = () => pencere.minimize().catch(() => {})
+  $('pBuyut').onclick = () => pencere.toggleMaximize().catch(() => {})
+  $('pKapat').onclick = () => pencere.close().catch(() => {})
+}
 // Masaüstünde uygulamanın sürümü (tauri.conf.json'daki), tarayıcıda "Web".
 if (masaustu) window.__TAURI__.app.getVersion().then(v => { $('surum').textContent = 'Sürüm ' + v }).catch(() => {})
 
@@ -1902,13 +1949,15 @@ function gorundu(id) {
   uyeleriCiz()
 }
 
-// "15 dakika önce", "3 saat önce", "2 gün önce". Tarih yazılmaz.
+// "15 dakika önce", "5 sa 45 dk önce", "2 gün 3 sa önce", "9 gün önce". Tarih yazılmaz.
 function neZaman(z) {
   const dk = Math.floor((Date.now() - z) / 60e3)
   if (dk < 1) return 'az önce'
   if (dk < 60) return dk + ' dakika önce'
-  if (dk < 60 * 24) return Math.floor(dk / 60) + ' saat önce'
-  return Math.floor(dk / 60 / 24) + ' gün önce'
+  const sa = Math.floor(dk / 60), gun = Math.floor(sa / 24)
+  if (sa < 24) return sa + ' sa' + (dk % 60 ? ' ' + dk % 60 + ' dk' : '') + ' önce'
+  if (gun < 7) return gun + ' gün' + (sa % 24 ? ' ' + sa % 24 + ' sa' : '') + ' önce'
+  return gun + ' gün önce'
 }
 
 // Sağdaki üye listesi ve soldaki "Seste kimse yok" yazısı. Çok sık çağrılabilir;
@@ -2308,11 +2357,28 @@ async function sesVeriSakla(o, veri) {
     })
   } catch {}
 }
+// Herkesin sesi aynı yükseklikte duyulsun: sesin sessiz olmayan kısımlarının ortalama gücü
+// (RMS) ölçülür ve çalarken hedefe getirilir. Kısık ses yükselir (en çok 8 kat), bağıran ses
+// kısılır. Tepeler çalma hattındaki sınırlayıcıda tutulur, cızırtı olmaz. Eski yüklenen
+// sesler de çalarken düzelir.
+const SES_HEDEF_RMS = .12
 function pcmTampon(veri) {
   const pcm = new Int16Array(veri)
   const t = new AudioBuffer({length: Math.max(1, pcm.length), numberOfChannels: 1, sampleRate: SES_HZ})
   const d = t.getChannelData(0)
   for (let i = 0; i < pcm.length; i++) d[i] = pcm[i] / 32768
+  // 20 ms'lik parçalar; çok sessiz parçalar (sesin başındaki/sonundaki boşluk) sayılmaz.
+  const P = SES_HZ / 50
+  let guc = 0, say = 0
+  for (let i = 0; i < d.length; i += P) {
+    let g = 0
+    const son = Math.min(d.length, i + P)
+    for (let j = i; j < son; j++) g += d[j] * d[j]
+    g /= son - i
+    if (g > 1e-5) { guc += g; say++ }
+  }
+  const rms = say ? Math.sqrt(guc / say) : 0
+  t._kazanc = rms > 1e-4 ? Math.min(8, Math.max(.1, SES_HEDEF_RMS / rms)) : 1
   return t
 }
 // Sesin çalınabilir hali: önce bellekte, sonra bu bilgisayarda aranır; yoksa null.
@@ -2373,11 +2439,20 @@ function tamponCal(t) {
   }
   const k = ctx.createBufferSource(), g = ctx.createGain()
   k.buffer = t
-  g.gain.value = efektSeviyesi / 100
-  k.connect(g).connect(ctx.destination)
+  g.gain.value = efektSeviyesi / 100 * (t._kazanc || 1)
+  k.connect(g).connect(efektHatti())
   k.onended = () => calanEfektler.delete(k)
   calanEfektler.add(k)
   k.start()
+}
+// Bütün panel/giriş seslerinin geçtiği sınırlayıcı: yükseltilen sesin tepeleri tavana vurmasın.
+let efektCikisi = null
+function efektHatti() {
+  if (efektCikisi?.context === ctx) return efektCikisi
+  const s = ctx.createDynamicsCompressor()
+  s.threshold.value = -6; s.knee.value = 3; s.ratio.value = 20; s.attack.value = .002; s.release.value = .15
+  s.connect(ctx.destination)
+  return efektCikisi = s
 }
 function efektleriDurdur() {
   for (const k of calanEfektler) try { k.stop() } catch {}

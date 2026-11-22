@@ -249,7 +249,7 @@ fn guncelleme_kaydi(app: &tauri::AppHandle, satir: &str) {
 /// ara sıra olan sorunlarda o anda ne olduğu sonradan görülsün diye.
 /// Saydam mod: pencerenin arkası buzlu (bulanık) görünür. Ne kadar saydam olacağını sayfa
 /// zemin renklerinin saydamlığıyla ayarlar; burası sadece arkadaki bulanıklığı açıp kapatır.
-/// Mac'te sistem "buzlu cam" malzemesi, Windows'ta akrilik.
+/// Mac'te sistemin en saydam koyu buzlu cam malzemesi (HUD), Windows'ta akrilik.
 #[tauri::command]
 fn saydam(pencere: tauri::WebviewWindow, acik: bool) {
     use tauri::window::{Effect, EffectState, EffectsBuilder};
@@ -258,9 +258,9 @@ fn saydam(pencere: tauri::WebviewWindow, acik: bool) {
         return;
     }
     #[cfg(target_os = "macos")]
-    let efekt = EffectsBuilder::new().effect(Effect::UnderWindowBackground).state(EffectState::Active);
+    let efekt = EffectsBuilder::new().effect(Effect::HudWindow).state(EffectState::Active);
     #[cfg(not(target_os = "macos"))]
-    let efekt = EffectsBuilder::new().effect(Effect::Acrylic).color(tauri::window::Color(17, 17, 17, 80));
+    let efekt = EffectsBuilder::new().effect(Effect::Acrylic).color(tauri::window::Color(17, 17, 17, 30));
     let _ = pencere.set_effects(efekt.build());
 }
 
