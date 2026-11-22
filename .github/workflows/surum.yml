@@ -7,7 +7,8 @@
 #   2. git tag v0.1.3 && git push origin v0.1.3
 #
 # Sabit linkler (her zaman en son sürüm):
-#   Windows ilk kurulum: https://github.com/yigitfire/sesapp/releases/latest/download/Ses-Kurulum.exe
+#   Windows ilk kurulum: https://github.com/yigitfire/sesapp/releases/latest/download/Monke-Kurulum.exe
+#   (Eski link Ses-Kurulum.exe de aynı dosyayı verir; uygulamanın eski adı "Ses" idi.)
 #   Güncelleme bilgisi:  https://github.com/yigitfire/sesapp/releases/latest/download/latest.json
 name: Sürüm
 
@@ -41,8 +42,9 @@ jobs:
         run: |
           $exe = Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
           New-Item -ItemType Directory cikti | Out-Null
+          Copy-Item $exe.FullName cikti/Monke-Kurulum.exe
+          Copy-Item "$($exe.FullName).sig" cikti/Monke-Kurulum.exe.sig
           Copy-Item $exe.FullName cikti/Ses-Kurulum.exe
-          Copy-Item "$($exe.FullName).sig" cikti/Ses-Kurulum.exe.sig
       - uses: actions/upload-artifact@v7
         with:
           name: windows
@@ -64,8 +66,8 @@ jobs:
       - name: Sabit isim
         run: |
           mkdir cikti
-          cp src-tauri/target/release/bundle/macos/Ses.app.tar.gz cikti/Ses-mac.app.tar.gz
-          cp src-tauri/target/release/bundle/macos/Ses.app.tar.gz.sig cikti/Ses-mac.app.tar.gz.sig
+          cp src-tauri/target/release/bundle/macos/Monke.app.tar.gz cikti/Monke-mac.app.tar.gz
+          cp src-tauri/target/release/bundle/macos/Monke.app.tar.gz.sig cikti/Monke-mac.app.tar.gz.sig
       - uses: actions/upload-artifact@v7
         with:
           name: mac
@@ -99,8 +101,8 @@ jobs:
               'version': surum,
               'pub_date': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
               'platforms': {
-                  'windows-x86_64': {'url': f'{taban}/Ses-Kurulum.exe', 'signature': imza('Ses-Kurulum.exe')},
-                  'darwin-aarch64': {'url': f'{taban}/Ses-mac.app.tar.gz', 'signature': imza('Ses-mac.app.tar.gz')},
+                  'windows-x86_64': {'url': f'{taban}/Monke-Kurulum.exe', 'signature': imza('Monke-Kurulum.exe')},
+                  'darwin-aarch64': {'url': f'{taban}/Monke-mac.app.tar.gz', 'signature': imza('Monke-mac.app.tar.gz')},
               },
           }, open('dosyalar/latest.json', 'w'), indent=2)
           EOF
@@ -110,5 +112,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ github.ref_name }}" dosyalar/* \
-            --title "Ses ${{ github.ref_name }}" \
-            --notes "Windows ilk kurulum: Ses-Kurulum.exe. Kurulu uygulamalar kendini otomatik günceller."
+            --title "Monke ${{ github.ref_name }}" \
+            --notes "Windows ilk kurulum: Monke-Kurulum.exe. Kurulu uygulamalar kendini otomatik günceller."

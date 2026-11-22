@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Ses",
+  "productName": "Monke",
   "version": "0.1.12",
   "identifier": "io.github.yigitfire.sesapp",
   "build": {
@@ -10,7 +10,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Ses",
+        "title": "Monke",
         "width": 900,
         "height": 600,
         "minWidth": 600,
@@ -54,6 +54,7 @@
       },
       "nsis": {
         "installMode": "currentUser",
+        "installerHooks": "windows/eski-ses-kaldir.nsh",
         "languages": [
           "Turkish"
         ]
