@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Ses</title>
+<style>
+  body{margin:0;font-family:system-ui,sans-serif;background:#16181d;color:#e6e6e6;height:100vh;display:flex}
+  #giris{margin:auto;display:flex;flex-direction:column;gap:8px;width:260px}
+  input,button{padding:8px;border-radius:6px;border:1px solid #333;background:#22252c;color:#e6e6e6;font-size:14px}
+  button{cursor:pointer;background:#3b6cf6;border:none}
+  #app{display:none;flex:1}
+  #sol{width:260px;padding:12px;border-right:1px solid #2a2d35;display:flex;flex-direction:column;gap:10px;overflow:auto}
+  #sag{flex:1;display:flex;flex-direction:column}
+  #mesajlar{flex:1;overflow:auto;padding:12px;font-size:14px}
+  #mesajlar div{margin-bottom:6px}
+  #mesajlar b{color:#8fb0ff}
+  #yaz{display:flex;gap:6px;padding:10px;border-top:1px solid #2a2d35}
+  #yaz input{flex:1}
+  .kisi{background:#1d2026;padding:8px;border-radius:6px;font-size:13px}
+  .kisi.konusuyor{outline:2px solid #3ccf6e}
+  input[type=range]{width:100%;padding:0}
+  .bar{height:6px;background:#2a2d35;border-radius:3px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:#3ccf6e}
+  .kirmizi{background:#d64545}
+</style>
+</head>
+<body>
+
+<div id="giris">
+  <input id="isim" placeholder="Adın">
+  <input id="oda" placeholder="Oda şifresi (herkes aynısını yazsın)">
+  <button id="katil">Katıl</button>
+  <div id="hata" style="color:#ff7b7b;font-size:13px"></div>
+</div>
+
+<div id="app">
+  <div id="sol">
+    <div class="kisi" id="ben">
+      <div><b id="benIsim"></b> (sen)</div>
+      <div>Mikrofon: <span id="micYuzde">100</span>%</div>
+      <input type="range" id="micGain" min="0" max="200" value="100">
+      <div class="bar"><i id="micBar"></i></div>
+      <button id="mute" style="margin-top:6px;width:100%">Mikrofonu kapat</button>
+    </div>
+    <div id="kisiler"></div>
+    <button id="cik" class="kirmizi">Çık</button>
+  </div>
+  <div id="sag">
+    <div id="mesajlar"></div>
+    <div id="yaz"><input id="mesaj" placeholder="Mesaj yaz..."><button id="gonder">Gönder</button></div>
+  </div>
+</div>
+
+<script type="module">
+import {joinRoom} from 'https://esm.run/trystero@0.27.0'
+
+const $ = id => document.getElementById(id)
+$('isim').value = localStorage.getItem('isim') || ''
+$('oda').value = localStorage.getItem('oda') || ''
+
+let ctx, room, profil
+const kisiler = new Map()
+
+$('katil').onclick = async () => {
+  const isim = $('isim').value.trim()
+  const oda = $('oda').value.trim()
+  if (!isim || !oda) { $('hata').textContent = 'Ad ve oda şifresi lazım'; return }
+  localStorage.setItem('isim', isim)
+  localStorage.setItem('oda', oda)
+
+  ctx = new AudioContext({latencyHint: 'interactive'})
+
+  let mic
+  try {
+    mic = await navigator.mediaDevices.getUserMedia({audio: {
+      echoCancellation: true, noiseSuppression: true, autoGainControl: false,
+      channelCount: 1, sampleRate: 48000
+    }})
+  } catch (e) { $('hata').textContent = 'Mikrofon izni verilmedi'; return }
+
+  const micKaynak = ctx.createMediaStreamSource(mic)
+  const micGain = ctx.createGain()
+  const micAnaliz = ctx.createAnalyser()
+  const cikis = ctx.createMediaStreamDestination()
+  micKaynak.connect(micGain)
+  micGain.connect(micAnaliz)
+  micGain.connect(cikis)
+  const gidenSes = cikis.stream
+
+  let kapali = false
+  $('micGain').oninput = e => {
+    $('micYuzde').textContent = e.target.value
+    if (!kapali) micGain.gain.value = e.target.value / 100
+  }
+  $('mute').onclick = () => {
+    kapali = !kapali
+    micGain.gain.value = kapali ? 0 : $('micGain').value / 100
+    $('mute').textContent = kapali ? 'Mikrofonu aç' : 'Mikrofonu kapat'
+    $('mute').classList.toggle('kirmizi', kapali)
+  }
+  seviyeIzle(micAnaliz, v => $('micBar').style.width = Math.min(100, v * 300) + '%')
+
+  room = joinRoom({appId: 'yigit-ses-app-2026', password: oda, maxUsers: 6}, oda)
+
+  room.onError(err => {
+    if (err.code === 'room-full') $('hata').textContent = 'Oda dolu (max 6 kişi)'
+  })
+
+  profil = room.makeUserState('profil', {isim})
+  profil.onChange((data, {userId, self, removed}) => {
+    if (self) return
+    if (removed) return kisiSil(userId)
+    kisiEkle(userId).querySelector('.ad').textContent = data.isim
+  })
+
+  await room.addStream(gidenSes)
+  room.onUserJoin(({userId}) => {
+    kisiEkle(userId)
+    room.addStream(gidenSes, {target: userId})
+  })
+  room.onUserLeave(({userId}) => kisiSil(userId))
+
+  room.onPeerStream((stream, {userId}) => sesBagla(userId, stream))
+
+  const chat = room.makeAction('chat')
+  chat.onMessage((text, {userId}) => {
+    const k = kisiler.get(userId)
+    mesajYaz(k ? k.el.querySelector('.ad').textContent : 'Biri', text)
+  })
+  const gonder = () => {
+    const t = $('mesaj').value.trim()
+    if (!t) return
+    chat.send(t)
+    mesajYaz(isim, t)
+    $('mesaj').value = ''
+  }
+  $('gonder').onclick = gonder
+  $('mesaj').onkeydown = e => { if (e.key === 'Enter') gonder() }
+
+  $('cik').onclick = () => { room.leave(); location.reload() }
+
+  $('benIsim').textContent = isim
+  $('giris').style.display = 'none'
+  $('app').style.display = 'flex'
+}
+
+function kisiEkle(userId) {
+  if (kisiler.has(userId)) return kisiler.get(userId).el
+  const el = document.createElement('div')
+  el.className = 'kisi'
+  el.innerHTML = `<div class="ad">...</div>
+    <div>Ses: <span class="yuzde">100</span>%</div>
+    <input type="range" min="0" max="200" value="100">`
+  $('kisiler').appendChild(el)
+  const gain = ctx.createGain()
+  gain.connect(ctx.destination)
+  el.querySelector('input').oninput = e => {
+    gain.gain.value = e.target.value / 100
+    el.querySelector('.yuzde').textContent = e.target.value
+  }
+  kisiler.set(userId, {el, gain})
+  return el
+}
+
+function sesBagla(userId, stream) {
+  kisiEkle(userId)
+  const k = kisiler.get(userId)
+  const a = new Audio()
+  a.srcObject = stream
+  a.muted = true
+  a.play()
+  k.audio = a
+  const kaynak = ctx.createMediaStreamSource(stream)
+  const analiz = ctx.createAnalyser()
+  kaynak.connect(k.gain)
+  kaynak.connect(analiz)
+  k.kaynak = kaynak
+  seviyeIzle(analiz, v => k.el.classList.toggle('konusuyor', v > 0.04))
+}
+
+function kisiSil(userId) {
+  const k = kisiler.get(userId)
+  if (!k) return
+  k.kaynak?.disconnect()
+  k.gain.disconnect()
+  if (k.audio) k.audio.srcObject = null
+  k.el.remove()
+  kisiler.delete(userId)
+}
+
+function seviyeIzle(analiz, cb) {
+  const buf = new Float32Array(analiz.fftSize)
+  const tick = () => {
+    analiz.getFloatTimeDomainData(buf)
+    let s = 0
+    for (const x of buf) s += x * x
+    cb(Math.sqrt(s / buf.length))
+    setTimeout(tick, 100)
+  }
+  tick()
+}
+
+function mesajYaz(kim, text) {
+  const d = document.createElement('div')
+  const b = document.createElement('b')
+  b.textContent = kim + ': '
+  d.append(b, document.createTextNode(text))
+  $('mesajlar').appendChild(d)
+  $('mesajlar').scrollTop = 1e9
+}
+</script>
+</body>
+</html>
