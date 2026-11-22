@@ -351,6 +351,8 @@
           <div id="girisCihazlari"></div>
           <div class="ayrac"></div>
         </div>
+        <label class="anahtar" title="Fan, klavye gibi arka plan seslerini siler. Sessiz odada kapatırsan sesin daha doğal duyulur.">Gürültü engelleme<input type="checkbox" id="gurultu"></label>
+        <div class="ayrac"></div>
         <h4>Giriş ses seviyesi</h4>
         <div class="seviye"><input type="range" id="micGain" min="0" max="200" value="100"><span class="yuzde" id="micYuzde">100</span></div>
         <div class="bar" title="Mikrofonun şu anki sesi"><i id="micBar"></i></div>
@@ -434,6 +436,35 @@
 
 <script type="module">
 import {joinRoom} from './vendor/trystero-0.27.0.js'
+
+// ---- Ses kalitesi ----
+// WebRTC sesi varsayılan olarak ~32 kbps Opus ile gönderir. Gönderen tarafın kalitesini,
+// karşı tarafın bağlantı ayarındaki (SDP) Opus satırı belirler. Karşıdan gelen ayara
+// "96 kbps" ve "kayıpta kurtarma (FEC)" eklenir: biz herkese (eski sürümlere de) bu
+// kalitede göndeririz. Trystero bu ayarı kendisi uyguladığı için tarayıcının ilgili
+// fonksiyonu sarılır; sadece Opus satırına dokunulur. Ses yolu değişmez (ducking yok).
+const OPUS_KBPS = 96
+function opusAyarla(sdp) {
+  const pt = /a=rtpmap:(\d+) opus\/48000/i.exec(sdp)?.[1]
+  if (!pt) return sdp
+  const ekle = eski => {
+    const ayar = new Map(eski.split(';').filter(Boolean).map(x => x.trim().split('=')))
+    ayar.set('maxaveragebitrate', String(OPUS_KBPS * 1000))
+    ayar.set('useinbandfec', '1')
+    return [...ayar].map(([k, v]) => k + '=' + v).join(';')
+  }
+  const satir = new RegExp(`a=fmtp:${pt} ([^\\r\\n]*)`)
+  return satir.test(sdp)
+    ? sdp.replace(satir, (_, eski) => `a=fmtp:${pt} ` + ekle(eski))
+    : sdp.replace(new RegExp(`(a=rtpmap:${pt} opus/48000[^\\r\\n]*)(\\r?\\n)`, 'i'), `$1$2a=fmtp:${pt} ${ekle('')}$2`)
+}
+{
+  const uzak = RTCPeerConnection.prototype.setRemoteDescription
+  RTCPeerConnection.prototype.setRemoteDescription = function (aciklama, ...geri) {
+    if (aciklama?.sdp) aciklama = {type: aciklama.type, sdp: opusAyarla(aciklama.sdp)}
+    return uzak.call(this, aciklama, ...geri)
+  }
+}
 
 const $ = id => document.getElementById(id)
 // Masaüstü uygulamasında (Tauri) mikrofon tarayıcı motoru yerine Rust'tan gelir.
@@ -1056,6 +1087,22 @@ $('mikMenuAc').onclick = () => {
 // bu bilgisayarda saklanır. Boş = sistemin varsayılan mikrofonu (sistemden değişince o da değişir).
 // Seçilen cihaz çıkarılmışsa Rust varsayılan mikrofonu açar.
 let seciliMikrofon = String(oku('mikrofon', '') || '')
+
+// Gürültü engelleme: masaüstünde Rust'taki RNNoise açılıp kapanır (açık mikrofonda da anında),
+// tarayıcıda tarayıcının kendi gürültü engellemesi. Ayar bu bilgisayarda saklanır, varsayılan açık.
+let gurultuAcik = oku('gurultu', true) !== false
+$('gurultu').checked = gurultuAcik
+function gurultuUygula() {
+  if (masaustu) window.__TAURI__.core.invoke('gurultu_engelle', {acik: gurultuAcik}).catch(() => {})
+  else for (const t of micKaynak?.mediaStream?.getAudioTracks() || [])
+    t.applyConstraints({echoCancellation: true, noiseSuppression: gurultuAcik, autoGainControl: false}).catch(() => {})
+}
+gurultuUygula()
+$('gurultu').onchange = () => {
+  gurultuAcik = $('gurultu').checked
+  kaydet('gurultu', gurultuAcik)
+  gurultuUygula()
+}
 let mikrofonListesi = []
 if (!masaustu) $('girisCihaziKutu').hidden = true
 async function girisCihazlariniYukle() {
@@ -1291,7 +1338,7 @@ function mesajEkle(liste) {
 // Tarayıcıda (web linki): mikrofon tarayıcının kendi ses işlemesiyle açılır.
 async function tarayiciMikrofon(ctx) {
   const mic = await navigator.mediaDevices.getUserMedia({audio: {
-    echoCancellation: true, noiseSuppression: true, autoGainControl: false,
+    echoCancellation: true, noiseSuppression: gurultuAcik, autoGainControl: false,
     channelCount: 1, sampleRate: 48000
   }})
   return ctx.createMediaStreamSource(mic)

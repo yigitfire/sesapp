@@ -13,9 +13,22 @@ struct MikrofonKolu {
     _dur: mpsc::Sender<()>,
 }
 
-#[derive(Default)]
 struct Durum {
     mikrofon: Mutex<Option<MikrofonKolu>>,
+    /// Gürültü engelleme (RNNoise) açık mı. Açık mikrofonda da anında etkili olur.
+    gurultu: Arc<AtomicBool>,
+}
+
+impl Default for Durum {
+    fn default() -> Self {
+        Self { mikrofon: Mutex::new(None), gurultu: Arc::new(AtomicBool::new(true)) }
+    }
+}
+
+/// Gürültü engellemeyi açar/kapatır (ayar arayüzde saklanır, açılışta buraya bildirilir).
+#[tauri::command]
+fn gurultu_engelle(durum: tauri::State<'_, Durum>, acik: bool) {
+    durum.gurultu.store(acik, std::sync::atomic::Ordering::Relaxed);
 }
 
 #[derive(Serialize)]
@@ -59,6 +72,7 @@ async fn mikrofon_ac(
 ) -> Result<MikrofonBilgisi, String> {
     // Önceki mikrofon varsa önce onu kapat (aynı anda iki mikrofon akışı olmasın).
     *durum.mikrofon.lock().unwrap() = None;
+    let gurultu = durum.gurultu.clone();
 
     let (dur_tx, dur_rx) = mpsc::channel::<()>();
     let (hazir_tx, hazir_rx) = mpsc::channel();
@@ -69,7 +83,7 @@ async fn mikrofon_ac(
         .name("mikrofon".into())
         .spawn(move || {
             let mut bayt = vec![0u8; mikrofon::KARE * 2];
-            let sonuc = mikrofon::Mikrofon::ac(cihaz.as_deref(), Arc::new(AtomicBool::new(true)), move |kare, _| {
+            let sonuc = mikrofon::Mikrofon::ac(cihaz.as_deref(), gurultu, move |kare, _| {
                 for (i, &s) in kare.iter().enumerate() {
                     let v = (s * 32767.0).round() as i16;
                     bayt[i * 2..i * 2 + 2].copy_from_slice(&v.to_le_bytes());
@@ -287,7 +301,7 @@ pub fn calistir() {
     });
     builder
         .manage(Durum::default())
-        .invoke_handler(tauri::generate_handler![mikrofon_ac, mikrofon_kapat, mikrofonlar, konsol])
+        .invoke_handler(tauri::generate_handler![mikrofon_ac, mikrofon_kapat, mikrofonlar, gurultu_engelle, konsol])
         .run(tauri::generate_context!())
         .expect("uygulama başlatılamadı");
 }
