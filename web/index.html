@@ -658,7 +658,8 @@ const masaustu = !!window.__TAURI__
 // Koyu arka planda okunaklı 12 renk.
 const RENKLER = ['#5b8cff', '#4cc3ff', '#2ed3b7', '#3ccf6e', '#a3e05a', '#f5d047',
                  '#ff9f43', '#ff7a6b', '#ff5a6e', '#ff6fb5', '#9b6bff', '#c9a7ff']
-const GECMIS_MAX = 1000
+// Sohbet geçmişi her bilgisayarda en çok bu kadar mesaj tutulur (eskiler silinir).
+const GECMIS_MAX = 300
 
 // Kalıcı kayıt (cihazda). Bozuk/erişilemeyen depoda uygulama yine çalışsın diye try içinde.
 const oku = (k, v) => { try { return JSON.parse(localStorage.getItem(k)) ?? v } catch { return v } }
@@ -1052,7 +1053,7 @@ async function katil(isim, oda) {
     if (localStorage.getItem(tur + ':monke') === null && eski !== null) localStorage.setItem(tur + ':monke', eski)
   }
   gecmisAnahtari = 'gecmis:monke'
-  gecmis = oku(gecmisAnahtari, []).map(mesajTemizle).filter(gecerliMesaj)
+  gecmis = oku(gecmisAnahtari, []).map(mesajTemizle).filter(gecerliMesaj).slice(-GECMIS_MAX)
   mesajlariCiz()
   uyeAnahtari = 'uyeler:monke'
   oyAnahtari = 'oylar:monke'
