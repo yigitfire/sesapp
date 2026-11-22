@@ -82,7 +82,8 @@
              background:var(--yesil);color:#0b1a10;font-weight:600}
   #seseKatil:hover{filter:brightness(1.1)}
   #seseKatil:disabled{opacity:.5;cursor:default}
-  #mikHata{margin-top:6px;font-size:12px;text-align:center;color:var(--kirmizi)}
+  #mikHata{padding:0 12px 8px;font-size:12px;text-align:center;color:var(--kirmizi)}
+  .ib.bekliyor{opacity:.5}
   #mikHata:empty{display:none}
 
   input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:4px;padding:0;border:0;border-radius:2px;cursor:pointer;
@@ -191,8 +192,8 @@
     <div id="kisiler"></div>
     <div id="sesAlani">
       <button id="seseKatil"><svg class="i"><use href="#i-kulaklik"/></svg>Sese katıl</button>
-      <div id="mikHata"></div>
     </div>
+    <div id="mikHata"></div>
     <div id="ben">
       <div id="renkler"></div>
       <div class="ust">
@@ -272,6 +273,8 @@ const kisiler = new Map()
 // Ses kanalı. Odaya girmek = sohbet; sese girmek ayrı. Seste değilken mikrofon tamamen
 // kapalı (Mac'teki turuncu mikrofon ışığı da söner) ve kimse duyulmaz.
 let sesteyim = false, sesDurumu, micGain, micKaynak, dinleme
+let kapali = false   // kullanıcı mikrofonunu kendisi kapattı mı (mute)
+let acmaNo = 0       // sürmekte olan mikrofon açma denemesi; sesten çıkınca geçersiz sayılır
 // Kim seste: userId -> true/false. Hiç bilgi gelmediyse (eski sürüm) seste sayılır,
 // çünkü eski sürümler her zaman sestedir.
 const seste = new Map()
@@ -403,7 +406,6 @@ async function katil(isim, oda) {
   dinleme.gain.value = 0
   dinleme.connect(ctx.destination)
 
-  let kapali = false
   boya($('micGain'))
   $('micGain').oninput = e => {
     $('micYuzde').textContent = e.target.value
@@ -411,11 +413,11 @@ async function katil(isim, oda) {
     if (!kapali) micGain.gain.value = e.target.value / 100
   }
   $('mute').onclick = () => {
+    // Mikrofon açılamadıysa bu buton tekrar dener.
+    if (!micKaynak) return mikrofonuAc()
     kapali = !kapali
     micGain.gain.value = kapali ? 0 : $('micGain').value / 100
-    simge($('mute'), kapali ? 'mik-yok' : 'mik')
-    $('mute').title = kapali ? 'Mikrofonu aç' : 'Mikrofonu kapat'
-    $('mute').classList.toggle('kapali', kapali)
+    mikDugmesi()
   }
   // Seviye kazançtan sonra ölçülür; mikrofon kapalıyken 0 olur, halka yanmaz.
   seviyeIzle(micAnaliz, v => {
@@ -573,36 +575,67 @@ async function katil(isim, oda) {
   sesiAc()
 }
 
-// Sese gir: mikrofonu aç, zincire tak, herkesi duymaya başla.
-async function sesiAc() {
-  if (sesteyim || $('seseKatil').disabled) return
-  $('seseKatil').disabled = true
-  $('mikHata').textContent = ''
-  try {
-    micKaynak = masaustu ? await masaustuMikrofon(ctx) : await tarayiciMikrofon(ctx)
-  } catch (e) {
-    // Mikrofon açılmasa da sohbet çalışmaya devam eder; buton tekrar denemeye izin verir.
-    $('mikHata').textContent = masaustu ? 'Mikrofon açılamadı: ' + e : 'Mikrofon izni verilmedi'
-    return
-  } finally {
-    $('seseKatil').disabled = false
-  }
-  micKaynak.connect(micGain)
+// Sese gir: herkesi hemen duymaya başla, mikrofonu ayrıca aç.
+// Duymak mikrofona bağlı değil: mikrofon izni beklense (Mac'in izin penceresi bir oyunun
+// arkasında kalabilir) ya da mikrofon hiç açılmasa bile kişi seste kalır ve herkesi duyar;
+// sadece kendi sesi gitmez ve mikrofon butonu kırmızı görünür (basınca tekrar dener).
+function sesiAc() {
+  if (sesteyim) return
   sesteyim = true
   dinleme.gain.value = 1
   sesDurumu.set({var: true}).catch(() => {})
   sesArayuzu()
   cal('giris')
+  mikrofonuAc()
+}
+
+async function mikrofonuAc() {
+  if (!sesteyim || micKaynak) return
+  const no = ++acmaNo
+  $('mikHata').textContent = ''
+  mikDugmesi('aciliyor')
+  let kaynak
+  try {
+    kaynak = masaustu ? await masaustuMikrofon(ctx) : await tarayiciMikrofon(ctx)
+  } catch (e) {
+    if (no !== acmaNo) return
+    $('mikHata').textContent = (masaustu ? 'Mikrofon açılamadı: ' + e : 'Mikrofon izni verilmedi') +
+      '. Herkesi duyuyorsun ama seni duymuyorlar. Tekrar denemek için mikrofon simgesine bas.'
+    mikDugmesi('yok')
+    return
+  }
+  // Mikrofon açılırken sesten çıkıldıysa (ya da yeni deneme başladıysa) bunu hemen kapat.
+  if (no !== acmaNo) return mikrofonuBirak(kaynak)
+  micKaynak = kaynak
+  micKaynak.connect(micGain)
+  mikDugmesi()
+}
+
+function mikrofonuBirak(kaynak) {
+  kaynak.disconnect()
+  if (masaustu) window.__TAURI__.core.invoke('mikrofon_kapat')
+  else kaynak.mediaStream.getTracks().forEach(t => t.stop())
+}
+
+// Mikrofon butonunun görünüşü: açılıyor (soluk), açılamadı (kırmızı, çizili), açık/kapalı.
+function mikDugmesi(durum) {
+  const b = $('mute'), yok = durum === 'yok' || (!durum && kapali)
+  simge(b, yok ? 'mik-yok' : 'mik')
+  b.classList.toggle('kapali', yok)
+  b.classList.toggle('bekliyor', durum === 'aciliyor')
+  b.title = durum === 'aciliyor' ? 'Mikrofon açılıyor...' : durum === 'yok' ? 'Mikrofonu tekrar dene'
+    : kapali ? 'Mikrofonu aç' : 'Mikrofonu kapat'
 }
 
 // Sesten çık: mikrofonu tamamen kapat, kimseyi duyma. Sohbet açık kalır.
 function sesiKapat() {
   if (!sesteyim) return
   sesteyim = false
-  micKaynak.disconnect()
-  if (masaustu) window.__TAURI__.core.invoke('mikrofon_kapat')
-  else micKaynak.mediaStream.getTracks().forEach(t => t.stop())
-  micKaynak = null
+  acmaNo++
+  if (micKaynak) { mikrofonuBirak(micKaynak); micKaynak = null }
+  // Açılmakta olan mikrofon varsa Rust tarafına da kapat de (yukarıdaki kontrol de kapatır).
+  else if (masaustu) window.__TAURI__.core.invoke('mikrofon_kapat')
+  $('mikHata').textContent = ''
   dinleme.gain.value = 0
   sesDurumu.set({var: false}).catch(() => {})
   sesArayuzu()
