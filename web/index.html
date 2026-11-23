@@ -645,6 +645,7 @@
 
 <script type="module">
 import {joinRoom} from './vendor/trystero-0.27.0.js'
+import {sonGorulmeBaslat} from './son-gorulme.js'
 
 // ---- Ses kalitesi ----
 // WebRTC sesi varsayılan olarak ~32 kbps Opus ile gönderir. Gönderen tarafın kalitesini,
@@ -939,6 +940,7 @@ const yuvarla = v => v == null ? '-' : v.toFixed(3)
 
 // Odaya ilk girerken zaten seste olanlar için "girdi" sesi çalmasın diye ilk birkaç saniye susulur.
 let odaGirisi = 0
+let sonGorulme = null
 const bildirimZamani = () => Date.now() - odaGirisi > 4000
 
 // Tek oda var ve anahtarı gizli bir davet kodu (kodun kendisi burada yazmaz; depo herkese
@@ -1129,6 +1131,13 @@ async function katil(isim, oda) {
   // Dakikada bir: açık olanların "son görülme"si yenilenir (biz kapanınca en son hâli kalır)
   // ve "5 dakika önce" gibi yazılar güncellenir.
   setInterval(() => { gorundu(benimId); for (const id of kisiler.keys()) gorundu(id) }, 60e3)
+  // Biz kapalıyken girip çıkanların son görülmesi Nostr rölelerindeki şifreli notlardan gelir.
+  sonGorulmeBaslat({davet: oda, benimId, gunluk: sesKaydi, al(id, z) {
+    if (z <= (uyeler[id] || 0)) return
+    uyeler[id] = z
+    kaydet(uyeAnahtari, uyeler)
+    uyeleriCiz()
+  }}).then(g => { sonGorulme = g }).catch(e => sesKaydi('son görülme rölelere bağlanamadı:', e?.message || e))
 
   // Profil (isim + renk): Trystero bunu doğrulanmış userId ile yayar ve sonradan
   // girenlere kendisi iletir. makeUserState sadece varsayılanı tanımlar; set yayınlar.
@@ -1831,6 +1840,7 @@ function sesArayuzu() {
 async function odadanCik() {
   // Bu oturumda otomatik girişi kapat; yoksa yenilenen sayfa hemen geri girerdi.
   sessionStorage.setItem('cikti', '1')
+  await sonGorulme?.kapat().catch(() => {})
   room.leave()
   // Sayfa yenilense de Rust tarafındaki mikrofon açık kalırdı; önce kapat.
   if (masaustu) await window.__TAURI__.core.invoke('mikrofon_kapat')
