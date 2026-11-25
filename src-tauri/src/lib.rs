@@ -1,4 +1,5 @@
 mod bildirim;
+mod link;
 pub mod mikrofon;
 
 use std::sync::atomic::AtomicBool;
@@ -342,7 +343,7 @@ pub fn calistir() {
                 tauri::Manager::app_handle(pencere).exit(0);
             }
         })
-        .invoke_handler(tauri::generate_handler![mikrofon_ac, mikrofon_kapat, mikrofonlar, gurultu_engelle, ses_kaydi, konsol, saydam,
+        .invoke_handler(tauri::generate_handler![link::link_onizle, link::link_ac, mikrofon_ac, mikrofon_kapat, mikrofonlar, gurultu_engelle, ses_kaydi, konsol, saydam,
             bildirim::bildirim_goster, bildirim::bildirim_ac, bildirim::bildirim_bekle, bildirim::bildirim_birak, bildirim::bildirim_tikla])
         .run(tauri::generate_context!())
         .expect("uygulama başlatılamadı");

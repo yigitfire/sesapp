@@ -3568,16 +3568,20 @@ version = "0.1.35"
 dependencies = [
  "anyhow",
  "audioadapter-buffers",
+ "base64 0.21.7",
  "cpal",
  "hound",
  "nnnoiseless",
+ "reqwest",
  "rtrb",
  "rubato",
+ "rustls",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-updater",
+ "url",
 ]
 
 [[package]]

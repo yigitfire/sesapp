@@ -395,6 +395,22 @@
   .msj .emoji{font-size:1.4em;line-height:1;vertical-align:-.12em;margin:0 1px;
               font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}
   .msj .sadeceEmoji{line-height:1.25}
+  /* Linkler mavi (Discord gibi); açık temada koyu mavi. */
+  :root{--link:#00a8fc}
+  :root[data-tema=acik]{--link:#0068e0}
+  .msj a.link{color:var(--link);text-decoration:none;cursor:pointer}
+  .msj a.link:hover{text-decoration:underline}
+  /* Link önizlemesi: sol kenarı renkli kart; küçük resim sağda, büyük resim altta. */
+  .onizleme{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;max-width:432px;margin:4px 0 2px;
+    padding:10px 12px 12px;border-left:4px solid var(--bg4);border-radius:4px;background:var(--bg2);text-shadow:none}
+  .onizleme .site{grid-column:1;font-size:12px;color:var(--soluk)}
+  .onizleme a.link{grid-column:1;font-weight:600;font-size:15px}
+  .onizleme p{grid-column:1;margin:0;font-size:13.5px;color:var(--yazi);opacity:.85;display:-webkit-box;
+    -webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}
+  .onizleme img{grid-column:2;grid-row:1 / span 3;width:80px;height:80px;object-fit:cover;border-radius:6px}
+  .onizleme.buyuk img{grid-column:1 / -1;grid-row:auto;width:100%;height:auto;max-height:300px;margin-top:6px;border-radius:6px}
+  .onizleme.sadeceResim{display:block;padding:0;border:0;background:none;max-width:400px}
+  .onizleme.sadeceResim img{display:block;max-width:100%;max-height:300px;width:auto;height:auto;border-radius:8px;cursor:pointer}
   .msj .sadeceEmoji .emoji{font-size:2.6em}
   #yaz{display:flex;align-items:center;margin:0 16px 16px;padding-right:4px;border-radius:10px;background:var(--bg3)}
   #yaz input{flex:1;padding:12px 14px;background:transparent;border:0}
@@ -2303,7 +2319,7 @@ function mesajlariCiz() {
     if (m.r) t.append(resimElemani(m))
     else if (m.g) t.append(gifResmi(m))
     else if (m.p) t.append(anketElemani(m))
-    else emojiliYaz(t, m.t)
+    else { emojiliYaz(t, m.t); linkOnizlemeleri(t, m.t) }
     d.append(t)
     return d
   }))
@@ -2385,6 +2401,106 @@ const OZEL_EMOJILER = {monke: 'logo.svg'}
 const KOD = /:([a-z0-9_+-]{1,40}):/g
 
 const EMOJI = /\p{RI}\p{RI}|\p{Extended_Pictographic}(?:\uFE0F|\p{EMod})?(?:\u200D\p{Extended_Pictographic}(?:\uFE0F|\p{EMod})?)*/gu
+// Yazıdaki http/https linkleri. Sondaki noktalama (cümle sonu, parantez) linke katılmaz;
+// ama linkin kendi içinde açılan parantez varsa kapanışı korunur (Vikipedi linkleri gibi).
+const LINK = /\bhttps?:\/\/[^\s<>"]+/gi
+function linkleriBul(yazi) {
+  const sonuc = []
+  for (const l of yazi.matchAll(LINK)) {
+    let u = l[0]
+    for (;;) {
+      const yeni = u.replace(/[.,!?;:'"\]}>*_~]+$/, '')
+      const k = yeni.endsWith(')') && (yeni.match(/\(/g) || []).length < (yeni.match(/\)/g) || []).length ? yeni.slice(0, -1) : yeni
+      if (k === u) break
+      u = k
+    }
+    if (u.length > 10) sonuc.push({i: l.index, u})
+  }
+  return sonuc
+}
+function linkElemani(url, yazi) {
+  const a = document.createElement('a')
+  a.className = 'link'
+  a.href = url
+  a.textContent = yazi
+  a.title = url
+  a.rel = 'noopener noreferrer'
+  a.target = '_blank'
+  return a
+}
+// Linke tıklayınca varsayılan tarayıcıda açılır (uygulamanın içinde değil).
+document.addEventListener('click', e => {
+  const a = e.target.closest?.('a.link')
+  if (!a) return
+  e.preventDefault()
+  const url = a.getAttribute('href')
+  if (!/^https?:\/\//i.test(url)) return
+  if (masaustu) window.__TAURI__.core.invoke('link_ac', {url}).catch(err => sesKaydi('link açılamadı:', err))
+  else window.open(url, '_blank', 'noopener')
+})
+
+// Link önizlemesi (Discord'daki gibi kart). Sadece masaüstünde: sayfayı Rust çeker (tarayıcı
+// başka sitelerin okunmasına izin vermez). Mesajdaki ilk 2 link. Sonuç bellekte tutulur:
+// sohbet her yeniden çizildiğinde tekrar çekilmez. Aynı anda en çok 3 istek, en yeniler önce.
+const onizlemeler = new Map(), onizlemeKuyrugu = []
+let onizlemeCalisan = 0
+function onizlemeIste(url) {
+  let s = onizlemeler.get(url)
+  if (s) return s
+  s = new Promise(coz => onizlemeKuyrugu.push({url, coz}))
+  onizlemeler.set(url, s)
+  onizlemeIslet()
+  return s
+}
+function onizlemeIslet() {
+  while (onizlemeCalisan < 3 && onizlemeKuyrugu.length) {
+    const {url, coz} = onizlemeKuyrugu.pop()
+    onizlemeCalisan++
+    window.__TAURI__.core.invoke('link_onizle', {url}).catch(() => null).then(o => {
+      onizlemeler.get(url).sonuc = o || null
+      coz(o || null)
+      onizlemeCalisan--
+      onizlemeIslet()
+    })
+  }
+}
+function linkOnizlemeleri(el, yazi) {
+  if (!masaustu) return
+  for (const url of [...new Set(linkleriBul(yazi).map(l => l.u))].slice(0, 2)) {
+    const yer = document.createElement('div')
+    el.append(yer)
+    const s = onizlemeIste(url)
+    const koy = o => {
+      if (!yer.isConnected && s.sonuc === undefined) return
+      if (o) yer.replaceWith(onizlemeKarti(url, o))
+      else yer.remove()
+    }
+    if (s.sonuc !== undefined) koy(s.sonuc)
+    else s.then(o => { if (yer.isConnected) { koy(o); if (altaYapisik) $('mesajlar').scrollTop = 1e9 } })
+  }
+}
+function onizlemeKarti(url, o) {
+  const k = document.createElement('div')
+  k.className = 'onizleme'
+  const alta = () => { if (altaYapisik) $('mesajlar').scrollTop = 1e9 }
+  if (!o.baslik && !o.aciklama) {
+    // Link doğrudan bir resim: sadece resim gösterilir, tıklayınca link açılır.
+    if (!o.resim) return k
+    k.classList.add('sadeceResim')
+    const a = linkElemani(url, '')
+    a.append(Object.assign(new Image(), {src: o.resim, alt: '', onload: alta}))
+    k.append(a)
+    return k
+  }
+  if (o.buyuk) k.classList.add('buyuk')
+  if (o.renk) k.style.borderLeftColor = o.renk
+  if (o.site) k.append(Object.assign(document.createElement('span'), {className: 'site', textContent: o.site}))
+  if (o.baslik) k.append(linkElemani(url, o.baslik))
+  if (o.aciklama) k.append(Object.assign(document.createElement('p'), {textContent: o.aciklama}))
+  if (o.resim) k.append(Object.assign(new Image(), {src: o.resim, alt: '', onload: alta}))
+  return k
+}
+
 function emojiliYaz(el, yazi) {
   let sayi = 0, baskaYaziVar = false
   const emojiKoy = e => {
@@ -2401,19 +2517,30 @@ function emojiliYaz(el, yazi) {
     }
     if (son < parca.length) yaziKoy(parca.slice(son))
   }
-  let son = 0
-  for (const k of yazi.matchAll(KOD)) {
-    const emoji = EMOJI_KODLARI[k[1]], ozel = OZEL_EMOJILER[k[1]]
-    if (!emoji && !ozel) continue
-    duzYaz(yazi.slice(son, k.index))
-    if (emoji) emojiKoy(emoji)
-    else {
-      el.append(Object.assign(new Image(), {className: 'ozelEmoji', src: ozel, alt: k[0], title: k[0]}))
-      sayi++
+  const kodluYaz = parca => {
+    let son = 0
+    for (const k of parca.matchAll(KOD)) {
+      const emoji = EMOJI_KODLARI[k[1]], ozel = OZEL_EMOJILER[k[1]]
+      if (!emoji && !ozel) continue
+      duzYaz(parca.slice(son, k.index))
+      if (emoji) emojiKoy(emoji)
+      else {
+        el.append(Object.assign(new Image(), {className: 'ozelEmoji', src: ozel, alt: k[0], title: k[0]}))
+        sayi++
+      }
+      son = k.index + k[0].length
     }
-    son = k.index + k[0].length
+    duzYaz(parca.slice(son))
   }
-  duzYaz(yazi.slice(son))
+  // Linkler önce ayrılır (içlerindeki ":" emoji kodu sanılmasın) ve mavi link olarak eklenir.
+  let son = 0
+  for (const l of linkleriBul(yazi)) {
+    kodluYaz(yazi.slice(son, l.i))
+    el.append(linkElemani(l.u, l.u))
+    baskaYaziVar = true
+    son = l.i + l.u.length
+  }
+  kodluYaz(yazi.slice(son))
   if (sayi && sayi <= 27 && !baskaYaziVar) el.classList.add('sadeceEmoji')
 }
 
